@@ -20,9 +20,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req);
 static void rebuild_content_length(ci_request_t *req, gw_body_data_t *body);
+static int file_exists (char *filename);
 /***********************************************************************************/
 /* Module definitions                                                              */
 
@@ -168,6 +170,10 @@ int gw_rebuild_post_init_service(ci_service_xdata_t *srv_xdata,
        return CI_ERROR;
     }
     
+    if (!file_exists(PROXY_APP_LOCATION)){
+       ci_debug_printf(1, "Proxy App not found at %s\n", PROXY_APP_LOCATION);
+       return CI_ERROR;   
+    }    
     
     set_istag(gw_rebuild_xdata);
     register_command_extend(GW_RELOAD_ISTAG, ONDEMAND_CMD, NULL, cmd_reload_istag);
@@ -853,3 +859,7 @@ char* concat(char* output, const char* s1, const char* s2)
     return output;
 }
 
+static int file_exists (char *filename) {
+  struct stat   buffer;   
+  return (stat (filename, &buffer) == 0);
+}
