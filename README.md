@@ -93,4 +93,38 @@ A full list of the command line options available to the client utility are avai
 /usr/local/c-icap/bin/c-icap-client  --help
 ```
 
+## Retrieving Statistics
+
+The ICAP Server provides an `info` resource that can be used to query for processing statistics. The `c-icap-client` can be used to query for this information. The address of the ICAP Server host can be substituted for `localhost` in this example, if necessary.
+```
+sudo /usr/local/c-icap/bin/c-icap-client -s "info?view=text" -i localhost -req any
+
+```
+If `view=text` is not included, then the response is formatted as an HTML table.
+The `-req` attribute is required in order to avoid an `options` request from being sent (the default).
+
+Excerpt of typical statistics request
+```
+Service gw_rebuild Statistics
+==================
+Service gw_rebuild REQMODS : 0
+Service gw_rebuild RESPMODS : 0
+Service gw_rebuild OPTIONS : 1
+Service gw_rebuild ALLOW 204 : 0
+Service gw_rebuild REQUESTS SCANNED : 0
+Service gw_rebuild REBUILD FAILURES : 0
+Service gw_rebuild REBUILD ERRORS : 0
+Service gw_rebuild SCAN REBUILT : 0
+Service gw_rebuild UNPROCESSED : 0
+Service gw_rebuild UNPROCESSABLE : 0
+Service gw_rebuild BYTES IN : 0 Kbs 133 bytes
+Service gw_rebuild BYTES OUT : 0 Kbs 255 bytes
+Service gw_rebuild HTTP BYTES IN : 0 Kbs 0 bytes
+Service gw_rebuild HTTP BYTES OUT : 0 Kbs 0 bytes
+Service gw_rebuild BODY BYTES IN : 0 Kbs 0 bytes
+Service gw_rebuild BODY BYTES OUT : 0 Kbs 0 bytes
+Service gw_rebuild BODY BYTES SCANNED : 0 Kbs 0 bytes
+
+```
+
 
