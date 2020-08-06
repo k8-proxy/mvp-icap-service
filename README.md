@@ -44,3 +44,30 @@ The option is available to generate the documentation, if required
 make doc
 ```
 
+### Build the Modules
+
+Navigate to the modules folder (`c-icap/c-icap-modules`) and run the scripts to setup the Makefiles.
+```
+aclocal
+autoconf
+automake --add-missing
+```
+Run the configure script, specifing where the server was installed, in both the `with-c-icap` and `prefix` arguments.
+```
+./configure --with-c-icap=/usr/local/c-icap --prefix=/usr/local/c-icap
+```
+After running the configuration script, we can build and install
+```
+make 
+sudo make install
+```
+> During the `make install` there will be some warnings about `libtools`, these can be ignored.
+
+After installation, the configuration files for each module/service are available in the c-icap server configuration directory, `/usr/local/c-icap/etc/` using the location folder specified in the 'configure' commands above.  
+
+For a module/service to be recognisd by the C-ICAP server its configuration file needs to be included into the main c-icap server configuration file. The following command adds the `gw_rebuild.conf` file
+```
+sudo sh -c 'echo "Include gw_rebuild.conf" >>  /usr/local/c-icap/etc/c-icap.conf'
+```
+
+
