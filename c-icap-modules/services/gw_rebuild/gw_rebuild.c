@@ -40,7 +40,7 @@ static struct gw_file_types SCAN_FILE_TYPES = {NULL, NULL};
 
 char *PROXY_APP_LOCATION = NULL;
 
-char *REBUILD_VERSION = "1.1.1";
+char *REBUILD_VERSION = "2.1.1";
 
 /*Statistic  Ids*/
 static int GW_SCAN_REQS = -1;
