@@ -70,4 +70,27 @@ For a module/service to be recognisd by the C-ICAP server its configuration file
 sudo sh -c 'echo "Include gw_rebuild.conf" >>  /usr/local/c-icap/etc/c-icap.conf'
 ```
 
+## Testing the Installation
+
+On the host server run the ICAP Server with the following command
+```
+sudo /usr/local/c-icap/bin/c-icap -N -D -d 10
+```
+
+From a separate command prompt, run the client utility to send an options request. The module specified in the `-s` argument must have been `Included` into the `gw_test.conf` file in the step above.
+```
+/usr/local/c-icap/bin/c-icap-client -s gw_rebuild
+```
+
+Run the client utility sending a file through the ICAP Server. This requires sufficient configuration to have been provided for the
+```
+/usr/local/c-icap/bin/c-icap-client -f <full path to source file>  -o <full path to output file> -s gw_test
+/usr/local/c-icap/bin/c-icap-client -f <full path to source file>  -o <full path to output file> -s gw_rebuild
+```
+
+A full list of the command line options available to the client utility are available from the application's `help` option.
+```
+/usr/local/c-icap/bin/c-icap-client  --help
+```
+
 
