@@ -1004,6 +1004,5 @@ AM_CONDITIONAL(USE_RPATH, [test "a$enable_rpath" != "ano"])
 
 AC_OUTPUT([
 include/c-icap-conf.h Makefile utils/Makefile services/Makefile
-services/echo/Makefile services/ex-206/Makefile modules/Makefile tests/Makefile
-docs/Makefile docs/man/Makefile
+services/echo/Makefile services/ex-206/Makefile modules/Makefile
 ])

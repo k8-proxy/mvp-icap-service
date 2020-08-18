@@ -14,7 +14,7 @@ DOXYGEN=@doxygen_bin@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS =  . utils modules services tests docs
+SUBDIRS =  . utils modules services
 
 
 lib_LTLIBRARIES=libicapapi.la
