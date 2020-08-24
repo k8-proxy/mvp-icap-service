@@ -19,7 +19,23 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 return (int)ReturnOutcome.GW_ERROR;
             }
 
-            return (int)ReturnOutcome.GW_FAILED;
+            return CopyFile(configuration[InputConfigurationKey], configuration[OutputConfigurationKey]);
+        }
+
+        private static int CopyFile(string sourceFilepath, string destinationFilepath)
+        {
+            try
+            {
+                var destinationFolder = System.IO.Path.GetDirectoryName(destinationFilepath);
+                System.IO.Directory.CreateDirectory(destinationFolder);
+                System.IO.File.Copy(sourceFilepath, destinationFilepath, true);
+                return (int)ReturnOutcome.GW_REBUILT;
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Error Processing 'input' {sourceFilepath}, {ex.Message}");
+                return (int)ReturnOutcome.GW_ERROR;
+            }
         }
 
         static bool CheckConfigurationIsValid(IConfiguration configuration)
