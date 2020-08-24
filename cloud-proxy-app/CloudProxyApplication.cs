@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,19 +7,21 @@ namespace Glasswall.IcapServer.CloudProxyApp
 {
     internal class CloudProxyApplication
     {
-        const string InputConfigurationKey = "input";
-        const string OutputConfigurationKey = "output";
-        const string ConfigurationConfigurationKey = "configuration";
+        private readonly IAppConfiguration _configuration;
 
-        internal int Run(string[] args)
+        public CloudProxyApplication(IAppConfiguration configuration)
         {
-            var configuration = GetConfiguration(args);
-            if (!CheckConfigurationIsValid(configuration))
+            _configuration = configuration;
+        }
+
+        internal int Run()
+        {
+            if (!CheckConfigurationIsValid(_configuration))
             {
                 return (int)ReturnOutcome.GW_ERROR;
             }
 
-            return CopyFile(configuration[InputConfigurationKey], configuration[OutputConfigurationKey]);
+            return CopyFile(_configuration.InputFilepath, _configuration.OutputFilepath);
         }
 
         private int CopyFile(string sourceFilepath, string destinationFilepath)
@@ -38,15 +40,15 @@ namespace Glasswall.IcapServer.CloudProxyApp
             }
         }
 
-        static bool CheckConfigurationIsValid(IConfiguration configuration)
+        static bool CheckConfigurationIsValid(IAppConfiguration configuration)
         {
             var configurationErrors = new List<string>();
 
-            if (string.IsNullOrEmpty(configuration[InputConfigurationKey]))
-                configurationErrors.Add($"'{InputConfigurationKey}' is missing from command line");
+            if (string.IsNullOrEmpty(configuration.InputFilepath))
+                configurationErrors.Add($"'InputFilepath' configuration is missing");
 
-            if (string.IsNullOrEmpty(configuration[OutputConfigurationKey]))
-                configurationErrors.Add($"'{OutputConfigurationKey}' is missing from command line");
+            if (string.IsNullOrEmpty(configuration.OutputFilepath))
+                configurationErrors.Add($"'OutputFilepath' configuration is missing");
 
             if (configurationErrors.Any())
             {
@@ -55,18 +57,5 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
             return !configurationErrors.Any();
         }
-
-        static IConfiguration GetConfiguration(string[] args)
-        {
-            var switchMappings = new Dictionary<string, string>()
-            {
-                { "-i", InputConfigurationKey },
-                { "-o", OutputConfigurationKey },
-                { "-c", ConfigurationConfigurationKey },
-            };
-            var builder = new ConfigurationBuilder().AddCommandLine(args, switchMappings);
-            return builder.Build();
-        }
-
     }
 }

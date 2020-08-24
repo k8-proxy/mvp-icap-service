@@ -1,19 +1,33 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
+using Glasswall.IcapServer.CloudProxyApp.Setup;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 
 namespace Glasswall.IcapServer.CloudProxyApp
 {
     class Program
     {
-        static ServiceProvider _serviceProvider;
+        static IServiceProvider _serviceProvider;
 
         static int Main(string[] args)
         {
+            IConfiguration configuration = new ConfigurationBuilder()
+              .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+              .AddEnvironmentVariables()
+              .AddCommandLine(args, CommandLineSwitchMapping.Mapping)
+              .Build();
+
             try
             {
-                RegisterServices();
-                IServiceScope serviceScope = _serviceProvider.CreateScope();
-                return serviceScope.ServiceProvider.GetRequiredService<CloudProxyApplication>().Run(args);
+                var services = new ServiceCollection();
+                _serviceProvider = services.ConfigureServices(configuration);
+                return _serviceProvider.GetRequiredService<CloudProxyApplication>().Run();
+            }
+            catch(InvalidApplicationConfigurationException iace)
+            {
+                Console.WriteLine($"Invalid Configuration: {iace.Message}");
+                return (int)ReturnOutcome.GW_ERROR;
             }
             finally
             {
@@ -30,13 +44,6 @@ namespace Glasswall.IcapServer.CloudProxyApp
             {
                 disposable.Dispose();
             }
-        }
-
-        private static void RegisterServices()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<CloudProxyApplication>();
-            _serviceProvider = services.BuildServiceProvider(true);
         }
     }
 }
