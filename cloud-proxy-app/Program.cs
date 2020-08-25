@@ -29,6 +29,11 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 Console.WriteLine($"Invalid Configuration: {iace.Message}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Processing Error: {ex.Message}");
+                return (int)ReturnOutcome.GW_ERROR;
+            }
             finally
             {
                 DisposeServices();
