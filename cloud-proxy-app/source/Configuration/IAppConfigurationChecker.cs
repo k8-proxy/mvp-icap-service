@@ -1,6 +1,6 @@
 ﻿namespace Glasswall.IcapServer.CloudProxyApp.Configuration
 {
-    interface IAppConfigurationChecker
+    public interface IAppConfigurationChecker
     {
         void CheckConfiguration(IAppConfiguration configuration);
     }

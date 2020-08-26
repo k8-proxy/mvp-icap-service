@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Glasswall.IcapServer.CloudProxyApp.Configuration
 {
-    class InvalidApplicationConfigurationException : ApplicationException
+    public class InvalidApplicationConfigurationException : ApplicationException
     {
         public InvalidApplicationConfigurationException() : base() { }
         public InvalidApplicationConfigurationException(string message) : base(message) { }

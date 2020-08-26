@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Glasswall.IcapServer.CloudProxyApp.Configuration
 {
-    class CloudProxyApplicationConfigurationChecker : IAppConfigurationChecker
+    public class CloudProxyApplicationConfigurationChecker : IAppConfigurationChecker
     {
         public void CheckConfiguration(IAppConfiguration configuration)
         {
@@ -17,7 +17,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Configuration
 
             if (configurationErrors.Any())
             {
-                throw new InvalidApplicationConfigurationException("{string.Join(',', configurationErrors)}");
+                throw new InvalidApplicationConfigurationException(string.Join(',', configurationErrors));
             }
         }
     }

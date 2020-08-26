@@ -1,6 +1,6 @@
 ﻿namespace Glasswall.IcapServer.CloudProxyApp.Configuration
 {
-    internal class CloudProxyApplicationConfiguration : IAppConfiguration
+    public class CloudProxyApplicationConfiguration : IAppConfiguration
     {
         public string InputFilepath { get; set; }
 
