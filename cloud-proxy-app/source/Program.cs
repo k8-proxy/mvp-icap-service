@@ -3,6 +3,7 @@ using Glasswall.IcapServer.CloudProxyApp.Setup;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Threading.Tasks;
 
 namespace Glasswall.IcapServer.CloudProxyApp
 {
@@ -10,7 +11,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
     {
         static IServiceProvider _serviceProvider;
 
-        static int Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
             IConfiguration configuration = new ConfigurationBuilder()
               .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -21,8 +22,10 @@ namespace Glasswall.IcapServer.CloudProxyApp
             try
             {
                 var services = new ServiceCollection();
-                _serviceProvider = services.ConfigureServices(configuration);
-                return _serviceProvider.GetRequiredService<CloudProxyApplication>().Run();
+                _serviceProvider = services.
+                    ConfigureCloudFactories().
+                    ConfigureServices(configuration);
+                return await _serviceProvider.GetRequiredService<CloudProxyApplication>().RunAsync();
             }
             catch(InvalidApplicationConfigurationException iace)
             {

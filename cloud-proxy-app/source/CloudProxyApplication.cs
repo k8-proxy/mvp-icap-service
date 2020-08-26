@@ -1,41 +1,55 @@
-﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
+﻿using Azure;
+using Azure.Storage.Blobs;
+using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Glasswall.IcapServer.CloudProxyApp
 {
     public class CloudProxyApplication
     {
-        private readonly IAppConfiguration _configuration;
+        private readonly IAppConfiguration _appConfiguration;
+        private readonly ICloudConfiguration _cloudConfiguration;
+        private readonly Func<string, BlobServiceClient> _blobServiceClientFactory;
 
-        public CloudProxyApplication(IAppConfiguration configuration)
+        public CloudProxyApplication(IAppConfiguration appConfiguration, ICloudConfiguration cloudConfiguration, Func<string, BlobServiceClient> blobServiceClientFactory)
         {
-            _configuration = configuration;
+            _appConfiguration = appConfiguration;
+            _cloudConfiguration = cloudConfiguration;
+            _blobServiceClientFactory = blobServiceClientFactory;
         }
 
-        internal int Run()
+        internal async Task<int> RunAsync()
         {
-            if (!CheckConfigurationIsValid(_configuration))
+            if (!CheckConfigurationIsValid(_appConfiguration))
             {
                 return (int)ReturnOutcome.GW_ERROR;
             }
 
-            return CopyFile(_configuration.InputFilepath, _configuration.OutputFilepath);
-        }
-
-        private int CopyFile(string sourceFilepath, string destinationFilepath)
-        {
             try
             {
-                var destinationFolder = System.IO.Path.GetDirectoryName(destinationFilepath);
-                System.IO.Directory.CreateDirectory(destinationFolder);
-                System.IO.File.Copy(sourceFilepath, destinationFilepath, true);
-                return (int)ReturnOutcome.GW_REBUILT;
+                BlobServiceClient blobServiceClient = _blobServiceClientFactory(_cloudConfiguration.FileProcessingStorageConnectionString);
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_cloudConfiguration.FileProcessingStorageOriginalStoreName);
+                BlobClient blobClient = containerClient.GetBlobClient(Path.GetFileName(_appConfiguration.InputFilepath));
+
+                using (FileStream uploadFileStream = File.OpenRead(_appConfiguration.InputFilepath))
+                {
+                    var status = await blobClient.UploadAsync(uploadFileStream, true);
+                }
+                return (int)ReturnOutcome.GW_UNPROCESSED;
+
+            }
+            catch (RequestFailedException rfe)
+            {
+                Console.WriteLine($"Error Uploading 'input' {_appConfiguration.InputFilepath}, {rfe.Message}");
+                return (int)ReturnOutcome.GW_ERROR;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error Processing 'input' {sourceFilepath}, {ex.Message}");
+                Console.WriteLine($"Error Processing 'input' {_appConfiguration.InputFilepath}, {ex.Message}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
         }
