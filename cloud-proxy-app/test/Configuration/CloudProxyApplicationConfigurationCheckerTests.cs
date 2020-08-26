@@ -47,6 +47,23 @@ namespace Tests
         }
 
         [Test]
+        public void CheckConfiguration_reports_all_missing_configuration()
+        {
+            // Arrange
+            var config = new CloudProxyApplicationConfiguration();
+
+            // Act
+            var exception = Assert.Throws<InvalidApplicationConfigurationException>(delegate { checkerUnderTest.CheckConfiguration(config); }, "Expected an exception to be thrown due to missing configuration");
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(exception.Message.Contains("InputFilepath"), "Expected missing output filepath to be reported");
+                Assert.That(exception.Message.Contains("OutputFilepath"), "Expected missing output filepath to be reported");
+            });
+        }
+
+        [Test]
         public void CheckConfiguration_valid_configuration()
         {
             // Arrange
