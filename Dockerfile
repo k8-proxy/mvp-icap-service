@@ -34,6 +34,7 @@ RUN apt-get install -y apt-transport-https && \
 FROM dotnet-sdk AS dotnet-package-restore
 COPY ./cloud-proxy-app/cloud-proxy-app.sln /src/cloud-proxy-app/cloud-proxy-app.sln 
 COPY ./cloud-proxy-app/source/cloud-proxy-app.csproj /src/cloud-proxy-app/source/cloud-proxy-app.csproj
+COPY ./cloud-proxy-app/test/cloud-proxy-app.test.csproj /src/cloud-proxy-app/test/cloud-proxy-app.test.csproj
 RUN dotnet restore /src/cloud-proxy-app/cloud-proxy-app.sln 
 
 FROM dotnet-package-restore AS dotnet-builder
@@ -48,7 +49,7 @@ RUN apt-get install -y apt-transport-https && \
 FROM dotnet-runtime
 COPY --from=build /usr/local/c-icap /usr/local/c-icap
 COPY --from=build /run/c-icap /run/c-icap
-COPY --from=dotnet-builder /src/cloud-proxy-app/bin/Release/netcoreapp3.1/publish /usr/local/bin
+COPY --from=dotnet-builder /src/cloud-proxy-app/source/bin/Release/netcoreapp3.1/publish /usr/local/bin
 
 EXPOSE 1344
 CMD ["/usr/local/c-icap/bin/c-icap","-N","-D"]
