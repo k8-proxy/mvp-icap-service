@@ -33,7 +33,7 @@ RUN apt-get install -y apt-transport-https && \
   
 FROM dotnet-sdk AS dotnet-package-restore
 COPY ./cloud-proxy-app/cloud-proxy-app.sln /src/cloud-proxy-app/cloud-proxy-app.sln 
-COPY ./cloud-proxy-app/cloud-proxy-app.csproj /src/cloud-proxy-app/cloud-proxy-app.csproj
+COPY ./cloud-proxy-app/source/cloud-proxy-app.csproj /src/cloud-proxy-app/source/cloud-proxy-app.csproj
 RUN dotnet restore /src/cloud-proxy-app/cloud-proxy-app.sln 
 
 FROM dotnet-package-restore AS dotnet-builder

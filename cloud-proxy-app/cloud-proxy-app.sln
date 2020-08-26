@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30320.27
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cloud-proxy-app", "cloud-proxy-app.csproj", "{C78E465D-D61E-49BE-BE01-09B5E803D8BF}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source", "Source", "{9A444EF1-1935-4466-9102-D9233E28368E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{ADAE0FDE-848C-4F04-B993-D041D0D179F3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cloud-proxy-app", "source\cloud-proxy-app.csproj", "{9DDC7707-6976-4480-944A-A4A0E2830863}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,13 +15,16 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C78E465D-D61E-49BE-BE01-09B5E803D8BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C78E465D-D61E-49BE-BE01-09B5E803D8BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C78E465D-D61E-49BE-BE01-09B5E803D8BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C78E465D-D61E-49BE-BE01-09B5E803D8BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DDC7707-6976-4480-944A-A4A0E2830863}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DDC7707-6976-4480-944A-A4A0E2830863}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DDC7707-6976-4480-944A-A4A0E2830863}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DDC7707-6976-4480-944A-A4A0E2830863}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9DDC7707-6976-4480-944A-A4A0E2830863} = {9A444EF1-1935-4466-9102-D9233E28368E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F7457E66-3594-4419-8A45-F725549AA161}
