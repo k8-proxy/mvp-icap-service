@@ -17,9 +17,9 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         public CloudProxyApplication(IAppConfiguration appConfiguration, ICloudConfiguration cloudConfiguration, Func<string, BlobServiceClient> blobServiceClientFactory)
         {
-            _appConfiguration = appConfiguration;
-            _cloudConfiguration = cloudConfiguration;
-            _blobServiceClientFactory = blobServiceClientFactory;
+            _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
+            _cloudConfiguration = cloudConfiguration ?? throw new ArgumentNullException(nameof(cloudConfiguration));
+            _blobServiceClientFactory = blobServiceClientFactory ?? throw new ArgumentNullException(nameof(blobServiceClientFactory));
         }
 
         internal async Task<int> RunAsync()
