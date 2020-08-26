@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Glasswall.IcapServer.CloudProxyApp
 {
-    internal class CloudProxyApplication
+    public class CloudProxyApplication
     {
         private readonly IAppConfiguration _configuration;
 

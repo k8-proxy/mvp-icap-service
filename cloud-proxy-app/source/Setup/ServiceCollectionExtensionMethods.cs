@@ -5,7 +5,7 @@ using System;
 
 namespace Glasswall.IcapServer.CloudProxyApp.Setup
 {
-    internal static class ServiceCollectionExtensionMethods
+    public static class ServiceCollectionExtensionMethods
     {
         public static IServiceProvider ConfigureServices(this IServiceCollection serviceCollection, IConfiguration configuration)
         {
@@ -13,8 +13,11 @@ namespace Glasswall.IcapServer.CloudProxyApp.Setup
 
             var appConfig = new CloudProxyApplicationConfiguration();
             configuration.Bind(appConfig);
-
             serviceCollection.AddSingleton<IAppConfiguration>(appConfig);
+
+            var cloudConfig = new CloudProxyCloudConfiguration();
+            configuration.Bind(cloudConfig);
+            serviceCollection.AddSingleton<ICloudConfiguration>(cloudConfig);
 
             return serviceCollection.BuildServiceProvider(true);
         }
