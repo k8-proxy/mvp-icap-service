@@ -24,6 +24,8 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         internal async Task<int> RunAsync()
         {
+            Guid inputFileId = Guid.Empty;
+
             if (!CheckConfigurationIsValid(_appConfiguration))
             {
                 return (int)ReturnOutcome.GW_ERROR;
@@ -33,8 +35,11 @@ namespace Glasswall.IcapServer.CloudProxyApp
             {
                 BlobServiceClient blobServiceClient = _blobServiceClientFactory(_cloudConfiguration.FileProcessingStorageConnectionString);
                 BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_cloudConfiguration.FileProcessingStorageOriginalStoreName);
-                BlobClient blobClient = containerClient.GetBlobClient(Path.GetFileName(_appConfiguration.InputFilepath));
 
+                var fileId = Guid.NewGuid();
+                BlobClient blobClient = containerClient.GetBlobClient(fileId.ToString());
+
+                Console.WriteLine($"Uploading file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {fileId}");
                 using (FileStream uploadFileStream = File.OpenRead(_appConfiguration.InputFilepath))
                 {
                     var status = await blobClient.UploadAsync(uploadFileStream, true);
@@ -44,12 +49,12 @@ namespace Glasswall.IcapServer.CloudProxyApp
             }
             catch (RequestFailedException rfe)
             {
-                Console.WriteLine($"Error Uploading 'input' {_appConfiguration.InputFilepath}, {rfe.Message}");
+                Console.WriteLine($"Error Uploading 'input' {inputFileId}, {rfe.Message}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error Processing 'input' {_appConfiguration.InputFilepath}, {ex.Message}");
+                Console.WriteLine($"Error Processing 'input' {inputFileId}, {ex.Message}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
         }
