@@ -1,10 +1,9 @@
 ﻿using Azure;
 using Azure.Storage.Blobs;
 using Glasswall.IcapServer.CloudProxyApp.Configuration;
+using Glasswall.IcapServer.CloudProxyApp.QueueAccess;
 using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
-using Microsoft.Azure.ServiceBus;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,40 +15,28 @@ namespace Glasswall.IcapServer.CloudProxyApp
     public class CloudProxyApplication
     {
         private readonly IAppConfiguration _appConfiguration;
-        private readonly ICloudConfiguration _cloudConfiguration;
 
         private readonly IUploader _uploader;
+        private readonly IServiceQueueClient _queueClient;
 
-        private readonly BlockingCollection<Message> _messageQueue;
         private readonly CancellationTokenSource _processingCancellationTokenSource;
 
         private readonly TimeSpan _processingTimeoutDuration = TimeSpan.FromSeconds(60);
 
-        private readonly Dictionary<string, ReturnOutcome> OutcomeMap = new Dictionary<string, ReturnOutcome>
-        {
-            ["Unknown"]=ReturnOutcome.GW_ERROR,
-            ["Rebuilt"]=ReturnOutcome.GW_REBUILT,
-            ["Unmanaged"]=ReturnOutcome.GW_UNPROCESSED,
-            ["Failed"]=ReturnOutcome.GW_FAILED,
-            ["Error"]=ReturnOutcome.GW_ERROR
-        };
-
-        public CloudProxyApplication(IAppConfiguration appConfiguration, ICloudConfiguration cloudConfiguration, 
-            IUploader uploader)
+        public CloudProxyApplication(IAppConfiguration appConfiguration, IUploader uploader, IServiceQueueClient queueClient)
         {
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
-            _cloudConfiguration = cloudConfiguration ?? throw new ArgumentNullException(nameof(cloudConfiguration));
-            _uploader = uploader;
-            _messageQueue = new BlockingCollection<Message>();
+            _uploader = uploader ?? throw new ArgumentNullException(nameof(uploader));
+            _queueClient = queueClient ?? throw new ArgumentNullException(nameof(uploader));
 
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
         }
 
         internal async Task<int> RunAsync()
         {
-            Guid inputFileId = Guid.Empty;
+            Guid inputFileId = Guid.NewGuid();
 
-            if (!CheckConfigurationIsValid(_cloudConfiguration) || !CheckConfigurationIsValid(_appConfiguration))
+            if (!CheckConfigurationIsValid(_appConfiguration))
             {
                 return (int)ReturnOutcome.GW_ERROR;
             }
@@ -57,39 +44,22 @@ namespace Glasswall.IcapServer.CloudProxyApp
             try
             {
                 var processingCancellationToken = _processingCancellationTokenSource.Token;
-                var queueClient = new QueueClient(_cloudConfiguration.TransactionOutcomeQueueConnectionString, _cloudConfiguration.TransactionOutcomeQueueName);
-                var messageHandlerOptions = new MessageHandlerOptions(ExceptionReceivedHandler)
-                {
-                    MaxConcurrentCalls = 1,
-                    AutoComplete = false
-                };
+                var queueListener = _queueClient.Register(TransactionOutcomeMessage.Label, inputFileId.ToString());
 
-                queueClient.RegisterMessageHandler((Message msg, CancellationToken ct) =>
-                {
-                    if (msg.UserProperties["file-id"] as string == inputFileId.ToString())
-                    {
-                        _messageQueue.Add(msg, ct);
-                        _messageQueue.CompleteAdding();
-                    }
-                    return Task.CompletedTask;
-                }, messageHandlerOptions);
-
-                inputFileId = Guid.NewGuid();
-
+                Console.WriteLine($"Uploading  file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
                 await UploadInputFile(inputFileId, _appConfiguration.InputFilepath);
 
-                var receivedMessage = _messageQueue.Take(processingCancellationToken);
-                await queueClient.CompleteAsync(receivedMessage.SystemProperties.LockToken);
-                var outcome = OutcomeMap[receivedMessage.UserProperties["file-outcome"] as string];
-                Console.WriteLine($"Received outcome for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}, Outcome = {Enum.GetName(typeof(ReturnOutcome), outcome)}");
-                var rebuiltFileToken = receivedMessage.UserProperties["file-rebuild-sas"] as string;
-                BlobClient rebuiltFileBlobClient = new BlobClient(new Uri(rebuiltFileToken));
-                using (FileStream downloadFileStream = File.OpenWrite(_appConfiguration.OutputFilepath))
-                {
-                    await rebuiltFileBlobClient.DownloadToAsync(downloadFileStream);
-                }
+                Console.WriteLine($"Waiting on outcome for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
+                var receivedMessage = queueListener.Take(processingCancellationToken);
 
-                return (int)outcome;
+                Console.WriteLine($"Received message for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
+                var transactionOutcome = TransactionOutcomeBuilder.Build(receivedMessage);
+
+                Console.WriteLine($"Received outcome for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}, Outcome = {Enum.GetName(typeof(ReturnOutcome), transactionOutcome.FileOutcome)}");
+
+                await WriteRebuiltFile(transactionOutcome.FileRebuildSas);
+
+                return (int)transactionOutcome.FileOutcome;
             }
             catch (RequestFailedException rfe)
             {
@@ -106,6 +76,13 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 Console.WriteLine($"Error Processing 'input' {inputFileId}, {ex.Message}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
+        }
+
+        private async Task WriteRebuiltFile(string fileRebuildSas)
+        {
+            BlobClient rebuiltFileBlobClient = new BlobClient(new Uri(fileRebuildSas));
+            using FileStream downloadFileStream = File.OpenWrite(_appConfiguration.OutputFilepath);
+            await rebuiltFileBlobClient.DownloadToAsync(downloadFileStream);
         }
 
         private async Task UploadInputFile(Guid inputFileId, string inputFilepath)
@@ -153,12 +130,6 @@ namespace Glasswall.IcapServer.CloudProxyApp
             }
 
             return !configurationErrors.Any();
-        }
-
-        static Task ExceptionReceivedHandler(ExceptionReceivedEventArgs exceptionReceivedEventArgs)
-        {
-            Console.WriteLine($"Message handler encountered an exception {exceptionReceivedEventArgs.Exception}.");
-            return Task.CompletedTask;
         }
     }
 }
