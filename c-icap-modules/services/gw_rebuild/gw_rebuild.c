@@ -711,7 +711,7 @@ static int exec_prog(const char **argv)
     int     status, timeout;
 
     if (0 == (my_pid = fork())) {
-        if (-1 == execve(argv[0], (char **)argv , NULL)) {
+        if (-1 == execvp(argv[0], (char **)argv)) {
             ci_debug_printf(1, "child process execve failed for %s (%d)", argv[0], my_pid);
             return GW_ERROR;
         }

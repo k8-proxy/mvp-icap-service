@@ -1,0 +1,75 @@
+﻿using Azure;
+using Azure.Storage.Blobs;
+using Glasswall.IcapServer.CloudProxyApp.Configuration;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Glasswall.IcapServer.CloudProxyApp
+{
+    public class CloudProxyApplication
+    {
+        private readonly IAppConfiguration _appConfiguration;
+        private readonly ICloudConfiguration _cloudConfiguration;
+        private readonly Func<string, BlobServiceClient> _blobServiceClientFactory;
+
+        public CloudProxyApplication(IAppConfiguration appConfiguration, ICloudConfiguration cloudConfiguration, Func<string, BlobServiceClient> blobServiceClientFactory)
+        {
+            _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
+            _cloudConfiguration = cloudConfiguration ?? throw new ArgumentNullException(nameof(cloudConfiguration));
+            _blobServiceClientFactory = blobServiceClientFactory ?? throw new ArgumentNullException(nameof(blobServiceClientFactory));
+        }
+
+        internal async Task<int> RunAsync()
+        {
+            if (!CheckConfigurationIsValid(_appConfiguration))
+            {
+                return (int)ReturnOutcome.GW_ERROR;
+            }
+
+            try
+            {
+                BlobServiceClient blobServiceClient = _blobServiceClientFactory(_cloudConfiguration.FileProcessingStorageConnectionString);
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_cloudConfiguration.FileProcessingStorageOriginalStoreName);
+                BlobClient blobClient = containerClient.GetBlobClient(Path.GetFileName(_appConfiguration.InputFilepath));
+
+                using (FileStream uploadFileStream = File.OpenRead(_appConfiguration.InputFilepath))
+                {
+                    var status = await blobClient.UploadAsync(uploadFileStream, true);
+                }
+                return (int)ReturnOutcome.GW_UNPROCESSED;
+
+            }
+            catch (RequestFailedException rfe)
+            {
+                Console.WriteLine($"Error Uploading 'input' {_appConfiguration.InputFilepath}, {rfe.Message}");
+                return (int)ReturnOutcome.GW_ERROR;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error Processing 'input' {_appConfiguration.InputFilepath}, {ex.Message}");
+                return (int)ReturnOutcome.GW_ERROR;
+            }
+        }
+
+        static bool CheckConfigurationIsValid(IAppConfiguration configuration)
+        {
+            var configurationErrors = new List<string>();
+
+            if (string.IsNullOrEmpty(configuration.InputFilepath))
+                configurationErrors.Add($"'InputFilepath' configuration is missing");
+
+            if (string.IsNullOrEmpty(configuration.OutputFilepath))
+                configurationErrors.Add($"'OutputFilepath' configuration is missing");
+
+            if (configurationErrors.Any())
+            {
+                Console.WriteLine($"Error Processing Command {Environment.NewLine} \t{string.Join(',', configurationErrors)}");
+            }
+
+            return !configurationErrors.Any();
+        }
+    }
+}
