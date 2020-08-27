@@ -1,8 +1,11 @@
-﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
+﻿using Azure.Storage.Blobs;
+using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Glasswall.IcapServer.CloudProxyApp.Setup;
+using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 
 namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
@@ -11,11 +14,15 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
     {
         private ServiceCollection _serviceCollection;
         private ConfigurationBuilder _configurationBuilder;
+        private readonly Func<string, BlobServiceClient> _stubFactory = StubFactory;
+
+        private static BlobServiceClient StubFactory(string name) { return new BlobServiceClient("test"); }
 
         [SetUp]
         public void ServiceCollectionExtentionMethodsTestsSetup()
         {
             _serviceCollection = new ServiceCollection();
+            _serviceCollection.AddSingleton(_stubFactory);
             _configurationBuilder = new ConfigurationBuilder();
         }
 
@@ -100,8 +107,8 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
             const string TestOutputFilepath = "c:\testoutput\file.pdf";
             var testConfiguration = new Dictionary<string, string>()
             {
-                [nameof(IAppConfiguration.InputFilepath)]= TestInputFilepath,
-                [nameof(IAppConfiguration.OutputFilepath)]= TestOutputFilepath
+                [nameof(IAppConfiguration.InputFilepath)] = TestInputFilepath,
+                [nameof(IAppConfiguration.OutputFilepath)] = TestOutputFilepath
             };
 
             IConfiguration configuration = _configurationBuilder
@@ -115,6 +122,22 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
             // Assert
             Assert.That(appConfiguration.InputFilepath, Is.EqualTo(TestInputFilepath), "expected the input filepath to be bound");
             Assert.That(appConfiguration.OutputFilepath, Is.EqualTo(TestOutputFilepath), "expected the output filepath to be bound");
+        }
+
+        [Test]
+        public void StorageUploaded_is_added_as_transient()
+        {
+            // Arrange
+            IConfiguration configuration = _configurationBuilder.Build();
+
+            // Act
+            var serviceProvider = _serviceCollection.ConfigureServices(configuration);
+            var uploader = serviceProvider.GetService<IUploader>();
+            var secondUploader = serviceProvider.GetService<IUploader>();
+
+            // Assert
+            Assert.That(uploader, Is.Not.Null, "expected the object to be available");
+            Assert.AreNotSame(uploader, secondUploader, "don't expect the same object to be provided");
         }
     }
 }

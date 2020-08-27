@@ -1,6 +1,7 @@
 ﻿using Azure;
 using Azure.Storage.Blobs;
 using Glasswall.IcapServer.CloudProxyApp.Configuration;
+using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
 using Microsoft.Azure.ServiceBus;
 using System;
 using System.Collections.Concurrent;
@@ -16,7 +17,8 @@ namespace Glasswall.IcapServer.CloudProxyApp
     {
         private readonly IAppConfiguration _appConfiguration;
         private readonly ICloudConfiguration _cloudConfiguration;
-        private readonly Func<string, BlobServiceClient> _blobServiceClientFactory;
+
+        private readonly IUploader _uploader;
 
         private readonly BlockingCollection<Message> _messageQueue;
         private readonly CancellationTokenSource _processingCancellationTokenSource;
@@ -32,12 +34,14 @@ namespace Glasswall.IcapServer.CloudProxyApp
             ["Error"]=ReturnOutcome.GW_ERROR
         };
 
-        public CloudProxyApplication(IAppConfiguration appConfiguration, ICloudConfiguration cloudConfiguration, Func<string, BlobServiceClient> blobServiceClientFactory)
+        public CloudProxyApplication(IAppConfiguration appConfiguration, ICloudConfiguration cloudConfiguration, 
+            IUploader uploader)
         {
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
             _cloudConfiguration = cloudConfiguration ?? throw new ArgumentNullException(nameof(cloudConfiguration));
-            _blobServiceClientFactory = blobServiceClientFactory ?? throw new ArgumentNullException(nameof(blobServiceClientFactory));
+            _uploader = uploader;
             _messageQueue = new BlockingCollection<Message>();
+
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
         }
 
@@ -70,17 +74,9 @@ namespace Glasswall.IcapServer.CloudProxyApp
                     return Task.CompletedTask;
                 }, messageHandlerOptions);
 
-                BlobServiceClient blobServiceClient = _blobServiceClientFactory(_cloudConfiguration.FileProcessingStorageConnectionString);
-                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_cloudConfiguration.FileProcessingStorageOriginalStoreName);
-
                 inputFileId = Guid.NewGuid();
-                BlobClient blobClient = containerClient.GetBlobClient(inputFileId.ToString());
 
-                Console.WriteLine($"Uploading file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
-                using (FileStream uploadFileStream = File.OpenRead(_appConfiguration.InputFilepath))
-                {
-                    var status = await blobClient.UploadAsync(uploadFileStream, true);
-                }
+                await UploadInputFile(inputFileId, _appConfiguration.InputFilepath);
 
                 var receivedMessage = _messageQueue.Take(processingCancellationToken);
                 await queueClient.CompleteAsync(receivedMessage.SystemProperties.LockToken);
@@ -110,6 +106,12 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 Console.WriteLine($"Error Processing 'input' {inputFileId}, {ex.Message}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
+        }
+
+        private async Task UploadInputFile(Guid inputFileId, string inputFilepath)
+        {
+            Console.WriteLine($"Uploading file '{Path.GetFileName(inputFilepath)}' with FileId {inputFileId}");
+            await _uploader.UploadInputFile(inputFileId,  inputFilepath);
         }
 
         static bool CheckConfigurationIsValid(IAppConfiguration configuration)
