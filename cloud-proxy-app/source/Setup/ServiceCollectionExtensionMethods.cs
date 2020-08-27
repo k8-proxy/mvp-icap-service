@@ -1,4 +1,5 @@
 ﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
+using Glasswall.IcapServer.CloudProxyApp.QueueAccess;
 using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Setup
         {
             serviceCollection.AddSingleton<CloudProxyApplication>();
             serviceCollection.AddTransient<IUploader, StorageUploader>();
+            serviceCollection.AddTransient<IServiceQueueClient, ServiceBusQueueClient>();
 
             var appConfig = new CloudProxyApplicationConfiguration();
             configuration.Bind(appConfig);
