@@ -1,6 +1,20 @@
 # Glasswall ICAP Service - Minimum Viable Prototype
 ICAP Service with ICAP Resource that interfaces with GW Cloud products
 
+- [Getting Started](#getting-started)
+- [Building ICAP Service](#building-icap-service)
+    - [Build the Server](#build-the-server)
+    - [Build the Modules](#build-the-modules)
+- [Testing the Installation](#testing-the-installation)
+- [Retrieving Statistics](#retrieving-the-statistics)
+- [gw_rebuild cloud-proxy-app](#gw_rebuild-cloud-proxy-app)
+    - [Setup the `cloud-proxy-app` Build Environment](#setup-the-cloud-proxy-app-build-environment)
+    - [Building `cloud-proxy-app`](#building-cloud-proxy-app)
+    - [Running `cloud-proxy-app`](#running-cloud-proxy-app)
+- [Running ICAP Server in Docker Container](#running-icap-server-in-docker-container)
+    - [Building the Docker Image](#building-the-docker-image)
+    - [Running the Docker Image](#running-the-docker-image)
+
 ## Getting started
 The original baseline code has been cloned from the open source project
 https://sourceforge.net/projects/c-icap/
@@ -127,4 +141,91 @@ Service gw_rebuild BODY BYTES SCANNED : 0 Kbs 0 bytes
 
 ```
 
+## `gw_rebuild cloud-proxy-app` 
+The `cloud-proxy-app` is used by the `gw_rebuild` ICAP Resource to process the received HTTP Content. It is a .NET Core 3.1 Console Application is is build externally to the ICAP Server and Resource.
 
+### Setup the `cloud-proxy-app` Build Environment
+The application should be built on the same host as the ICAP Server and associated components. The following steps assume an Ubuntu distro.
+```
+$ cat /etc/lsb-release
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=18.04
+DISTRIB_CODENAME=bionic
+DISTRIB_DESCRIPTION="Ubuntu 18.04.4 LTS"
+```
+
+Using the instructions provided by Microsoft [Install .NET Core SDK or .NET Core Runtime on Ubuntu](https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu#1804-)
+
+Add the Microsoft package signing key to your list of trusted keys and add the package repository.
+```
+wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+```
+
+Install the SDK
+```
+sudo apt-get update; \
+  sudo apt-get install -y apt-transport-https && \
+  sudo apt-get update && \
+  sudo apt-get install -y dotnet-sdk-3.1
+```
+
+Since the SDK include the runtime, there is no need to add this seperately.
+
+### Building `cloud-proxy-app` 
+From where the repo was cloned to, navigate into the `c-icap/cloud-proxy-app` folder.
+Restore the solution's packages
+```
+dotnet restore ./cloud-proxy-app.sln
+``` 
+
+Publish the solution
+```
+dotnet publish -c Release ./cloud-proxy-app.sln
+```
+The displayed logs will then report where the published application has been deployed to
+```
+Microsoft (R) Build Engine version 16.7.0-preview-20360-03+188921e2f for .NET
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  cloud-proxy-app -> /mnt/c/Users/paul/code_projects/mvp-icap-service/cloud-proxy-app/bin/Release/netcoreapp3.1/cloud-proxy-app.dll
+  cloud-proxy-app -> /mnt/c/Users/paul/code_projects/mvp-icap-service/cloud-proxy-app/bin/Release/netcoreapp3.1/publish/
+```
+
+### Running `cloud-proxy-app` 
+The app is run by the `gw_rebuild` ICAP Resource to pass content to the cloud-based Glasswall processing components.
+
+The app receives configuration items through two mechanisms: command line and environment variables.
+
+#### Command Line Arguments
+These are configuration items that are new for each content item to be processed. These are provided by the `gw_rebuild` ICAP Resource at run-time.
+- -i : filepath of file to be rebuilt.
+- -o : filepath where rebuilt file should be written.
+
+#### Environment Variables
+These are static configuration that is used by the app to connect with other components.
+- *FileProcessingStorageConnectionString* : connection string for Azure Storage Account being used for `original` and `rebuilt` stores.
+- *FileProcessingStorageOriginalStoreName* : name of the container being used as the `original` store.
+- *TransactionOutcomeQueueConnectionString* : connection string for Azure Service Bus Namespace in which the `Transaction Outcome` Queue is located.
+- *TransactionOutcomeQueueName* : name give to the Azure Service Bus Queue being used as the `Transaction Outcome Queue`.
+
+## Running ICAP Server in Docker Container
+
+### Building the Docker Image
+From where the repo was cloned to, navigate into the `c-icap` folder
+```
+docker build -t c-icap-server .
+```
+
+### Running the Docker Image 
+The Proxy API App requires a number of environment variables to be configured to enable it to connection to the resources on which it is dependent. This need to be provided when starting up the Docker container.
+```
+docker run -d -e TransactionOutcomeQueueName='local-transaction-outcome' \
+-e TransactionOutcomeQueueConnectionString='AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlm' \
+-e FileProcessingStorageConnectionString='AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlm' \
+-e FileProcessingStorageOriginalStoreName='local-original' \
+ -p 1344:1344 \
+ c-icap-server:latest
+```
