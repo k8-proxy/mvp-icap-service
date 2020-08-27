@@ -26,7 +26,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
         {
             Guid inputFileId = Guid.Empty;
 
-            if (!CheckConfigurationIsValid(_appConfiguration))
+            if (!CheckConfigurationIsValid(_cloudConfiguration) || !CheckConfigurationIsValid(_appConfiguration))
             {
                 return (int)ReturnOutcome.GW_ERROR;
             }
@@ -72,6 +72,29 @@ namespace Glasswall.IcapServer.CloudProxyApp
             if (configurationErrors.Any())
             {
                 Console.WriteLine($"Error Processing Command {Environment.NewLine} \t{string.Join(',', configurationErrors)}");
+            }
+
+            return !configurationErrors.Any();
+        }
+
+        static bool CheckConfigurationIsValid(ICloudConfiguration configuration)
+        {
+            var configurationErrors = new List<string>();
+            if (string.IsNullOrEmpty(configuration.FileProcessingStorageConnectionString))
+                configurationErrors.Add($"'FileProcessingStorageConnectionString' configuration is missing");
+
+            if (string.IsNullOrEmpty(configuration.FileProcessingStorageOriginalStoreName))
+                configurationErrors.Add($"'FileProcessingStorageOriginalStoreName' configuration is missing");
+
+            if (string.IsNullOrEmpty(configuration.TransactionOutcomeQueueConnectionString))
+                configurationErrors.Add($"'TransactionOutcomeQueueConnectionString' configuration is missing");
+
+            if (string.IsNullOrEmpty(configuration.TransactionOutcomeQueueName))
+                configurationErrors.Add($"'TransactionOutcomeQueueName' configuration is missing");
+
+            if (configurationErrors.Any())
+            {
+                Console.WriteLine($"Error Missing Configuration {Environment.NewLine} \t{string.Join(',', configurationErrors)}");
             }
 
             return !configurationErrors.Any();
