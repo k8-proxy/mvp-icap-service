@@ -68,7 +68,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
             }
             catch (OperationCanceledException oce)
             {
-                Console.WriteLine($"Error Processing Timeout pf 'input' {inputFileId} exceeded {_processingTimeoutDuration.TotalSeconds}s, {oce.Message}");
+                Console.WriteLine($"Error Processing Timeout 'input' {inputFileId} exceeded {_processingTimeoutDuration.TotalSeconds}s, {oce.Message}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
             catch (Exception ex)
