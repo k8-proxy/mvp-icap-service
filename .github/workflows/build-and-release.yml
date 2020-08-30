@@ -59,7 +59,7 @@ jobs:
         registry-login-server: ${{ env.REPOSITORY }}
         registry-username: ${{ secrets.REGISTRY_USER }}
         registry-password: ${{ secrets.REGISTRY_PASS }}
-        environment-variables: FileProcessingStorageConnectionString='DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=gwicapqasasasada;AccountKey=YA+dasdasdadsadasdsada'
+        environment-variables: FileProcessingStorageConnectionString='AccountName=gwicapqasasasada;AccountKey=YA+dasdasdadsadasdsada'
         #secure-environment-variables: FileProcessingStorageConnectionString=${{ secrets.STORAGE_CONNECTION_STRING }} FileProcessingStorageOriginalStoreName=${{ secrets.STORAGE_STORE_NAME }} TransactionOutcomeQueueConnectionString=${{ secrets.QUEUE_CONNECTION_STRING }} TransactionOutcomeQueueName=${{ secrets.QUEUE_NAME }}
         name: ${{ env.CONTAINER_NAME }}
         location: 'UK South'
