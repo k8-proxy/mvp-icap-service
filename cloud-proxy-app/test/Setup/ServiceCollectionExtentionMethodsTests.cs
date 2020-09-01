@@ -2,8 +2,10 @@
 using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Glasswall.IcapServer.CloudProxyApp.Setup;
 using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
+using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -14,15 +16,18 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
     {
         private ServiceCollection _serviceCollection;
         private ConfigurationBuilder _configurationBuilder;
-        private readonly Func<string, BlobServiceClient> _stubFactory = StubFactory;
+        private readonly Func<string, BlobServiceClient> _stubBlobFactory = StubBlobFactory;
+        private readonly Func<string, string, IQueueClient> _stubQueueFactory = StubQueueFactory;
 
-        private static BlobServiceClient StubFactory(string name) { return new BlobServiceClient("test"); }
+        private static BlobServiceClient StubBlobFactory(string name) { return new BlobServiceClient("test"); }
+        private static IQueueClient StubQueueFactory(string connectionString, string name) { return Mock.Of<IQueueClient>(); }
 
         [SetUp]
         public void ServiceCollectionExtentionMethodsTestsSetup()
         {
             _serviceCollection = new ServiceCollection();
-            _serviceCollection.AddSingleton(_stubFactory);
+            _serviceCollection.AddSingleton(_stubBlobFactory);
+            _serviceCollection.AddSingleton(_stubQueueFactory);
             _configurationBuilder = new ConfigurationBuilder();
         }
 

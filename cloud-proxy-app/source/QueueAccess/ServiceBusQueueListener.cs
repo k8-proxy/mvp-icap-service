@@ -6,10 +6,10 @@ namespace Glasswall.IcapServer.CloudProxyApp.QueueAccess
 {
     public class ServiceBusQueueListener : IQueueListener
     {
-        private readonly QueueClient _queueClient;
+        private readonly IQueueClient _queueClient;
         private readonly BlockingCollection<Message> _messageQueue;
 
-        public ServiceBusQueueListener(QueueClient queueClient, BlockingCollection<Message> messageQueue)
+        public ServiceBusQueueListener(IQueueClient queueClient, BlockingCollection<Message> messageQueue)
         {
             _queueClient = queueClient;
             _messageQueue = messageQueue;

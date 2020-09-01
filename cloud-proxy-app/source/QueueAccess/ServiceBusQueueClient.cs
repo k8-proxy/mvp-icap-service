@@ -10,13 +10,13 @@ namespace Glasswall.IcapServer.CloudProxyApp.QueueAccess
     public class ServiceBusQueueClient : IServiceQueueClient
     {
         private readonly ICloudConfiguration _cloudConfiguration;
-        private readonly QueueClient _queueClient;
+        private readonly IQueueClient _queueClient;
         private readonly MessageHandlerOptions _messageHandlerOptions;
 
-        public ServiceBusQueueClient(ICloudConfiguration cloudConfiguration)
+        public ServiceBusQueueClient(ICloudConfiguration cloudConfiguration, Func<string, string, IQueueClient> queueClientFactory)
         {
             _cloudConfiguration = cloudConfiguration;
-            _queueClient = new QueueClient(_cloudConfiguration.TransactionOutcomeQueueConnectionString, _cloudConfiguration.TransactionOutcomeQueueName);
+            _queueClient = queueClientFactory(_cloudConfiguration.TransactionOutcomeQueueConnectionString, _cloudConfiguration.TransactionOutcomeQueueName);
             _messageHandlerOptions = new MessageHandlerOptions(ExceptionReceivedHandler)
             {
                 MaxConcurrentCalls = 1,
