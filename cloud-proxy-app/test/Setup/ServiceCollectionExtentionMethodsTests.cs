@@ -38,7 +38,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
             IConfiguration configuration = _configurationBuilder.Build();
 
             // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration);
+            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
             var cloudProxyApplication = serviceProvider.GetService<CloudProxyApplication>();
             var secondCloudProxyApplication = serviceProvider.GetService<CloudProxyApplication>();
 
@@ -54,7 +54,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
             IConfiguration configuration = _configurationBuilder.Build();
 
             // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration);
+            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
             var cloudConfiguration = serviceProvider.GetService<ICloudConfiguration>();
             var secondCloudConfiguration = serviceProvider.GetService<ICloudConfiguration>();
 
@@ -80,7 +80,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
                                                     .Build();
 
             // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration);
+            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
             var cloudConfiguration = serviceProvider.GetService<ICloudConfiguration>();
 
             // Assert
@@ -95,7 +95,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
             IConfiguration configuration = _configurationBuilder.Build();
 
             // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration);
+            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
             var appConfiguration = serviceProvider.GetService<IAppConfiguration>();
             var secondAppConfiguration = serviceProvider.GetService<IAppConfiguration>();
 
@@ -121,7 +121,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
                                                     .Build();
 
             // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration);
+            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
             var appConfiguration = serviceProvider.GetService<IAppConfiguration>();
 
             // Assert
@@ -136,7 +136,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
             IConfiguration configuration = _configurationBuilder.Build();
 
             // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration);
+            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
             var uploader = serviceProvider.GetService<IUploader>();
             var secondUploader = serviceProvider.GetService<IUploader>();
 

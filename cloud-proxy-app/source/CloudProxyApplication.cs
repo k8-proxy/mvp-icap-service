@@ -3,6 +3,7 @@ using Azure.Storage.Blobs;
 using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Glasswall.IcapServer.CloudProxyApp.QueueAccess;
 using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,17 +19,17 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         private readonly IUploader _uploader;
         private readonly IServiceQueueClient _queueClient;
-
+        private readonly ILogger<CloudProxyApplication> _logger;
         private readonly CancellationTokenSource _processingCancellationTokenSource;
 
         private readonly TimeSpan _processingTimeoutDuration = TimeSpan.FromSeconds(60);
 
-        public CloudProxyApplication(IAppConfiguration appConfiguration, IUploader uploader, IServiceQueueClient queueClient)
+        public CloudProxyApplication(IAppConfiguration appConfiguration, IUploader uploader, IServiceQueueClient queueClient, ILogger<CloudProxyApplication> logger)
         {
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
             _uploader = uploader ?? throw new ArgumentNullException(nameof(uploader));
             _queueClient = queueClient ?? throw new ArgumentNullException(nameof(uploader));
-
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
         }
 
@@ -46,16 +47,16 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 var processingCancellationToken = _processingCancellationTokenSource.Token;
                 var queueListener = _queueClient.Register(TransactionOutcomeMessage.Label, inputFileId.ToString());
 
-                Console.WriteLine($"Uploading  file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
+                _logger.LogInformation($"Uploading  file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
                 await UploadInputFile(inputFileId, _appConfiguration.InputFilepath);
 
-                Console.WriteLine($"Waiting on outcome for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
+                _logger.LogInformation($"Waiting on outcome for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
                 var receivedMessage = queueListener.Take(processingCancellationToken);
 
-                Console.WriteLine($"Received message for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
+                _logger.LogInformation($"Received message for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}");
                 var transactionOutcome = TransactionOutcomeBuilder.Build(receivedMessage);
 
-                Console.WriteLine($"Received outcome for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}, Outcome = {Enum.GetName(typeof(ReturnOutcome), transactionOutcome.FileOutcome)}");
+                _logger.LogInformation($"Received outcome for file '{Path.GetFileName(_appConfiguration.InputFilepath)}' with FileId {inputFileId}, Outcome = {Enum.GetName(typeof(ReturnOutcome), transactionOutcome.FileOutcome)}");
 
                 await WriteRebuiltFile(transactionOutcome.FileRebuildSas);
 
@@ -63,17 +64,17 @@ namespace Glasswall.IcapServer.CloudProxyApp
             }
             catch (RequestFailedException rfe)
             {
-                Console.WriteLine($"Error Uploading 'input' {inputFileId}, {rfe.Message}");
+                _logger.LogError(rfe, $"Error Uploading 'input' {inputFileId}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
             catch (OperationCanceledException oce)
             {
-                Console.WriteLine($"Error Processing Timeout 'input' {inputFileId} exceeded {_processingTimeoutDuration.TotalSeconds}s, {oce.Message}");
+                _logger.LogError(oce, $"Error Processing Timeout 'input' {inputFileId} exceeded {_processingTimeoutDuration.TotalSeconds}s");
                 return (int)ReturnOutcome.GW_ERROR;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error Processing 'input' {inputFileId}, {ex.Message}");
+                _logger.LogError(ex, $"Error Processing 'input' {inputFileId}");
                 return (int)ReturnOutcome.GW_ERROR;
             }
         }
@@ -87,11 +88,11 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         private async Task UploadInputFile(Guid inputFileId, string inputFilepath)
         {
-            Console.WriteLine($"Uploading file '{Path.GetFileName(inputFilepath)}' with FileId {inputFileId}");
+            _logger.LogInformation($"Uploading file '{Path.GetFileName(inputFilepath)}' with FileId {inputFileId}");
             await _uploader.UploadInputFile(inputFileId,  inputFilepath);
         }
 
-        static bool CheckConfigurationIsValid(IAppConfiguration configuration)
+        bool CheckConfigurationIsValid(IAppConfiguration configuration)
         {
             var configurationErrors = new List<string>();
 
@@ -103,13 +104,13 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
             if (configurationErrors.Any())
             {
-                Console.WriteLine($"Error Processing Command {Environment.NewLine} \t{string.Join(',', configurationErrors)}");
+                _logger.LogError($"Error Processing Command {Environment.NewLine} \t{string.Join(',', configurationErrors)}");
             }
 
             return !configurationErrors.Any();
         }
 
-        static bool CheckConfigurationIsValid(ICloudConfiguration configuration)
+        bool CheckConfigurationIsValid(ICloudConfiguration configuration)
         {
             var configurationErrors = new List<string>();
             if (string.IsNullOrEmpty(configuration.FileProcessingStorageConnectionString))
@@ -126,7 +127,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
             if (configurationErrors.Any())
             {
-                Console.WriteLine($"Error Missing Configuration {Environment.NewLine} \t{string.Join(',', configurationErrors)}");
+                _logger.LogError($"Error Missing Configuration {Environment.NewLine} \t{string.Join(',', configurationErrors)}");
             }
 
             return !configurationErrors.Any();
