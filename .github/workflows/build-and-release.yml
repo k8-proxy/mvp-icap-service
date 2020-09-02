@@ -5,8 +5,8 @@ env:
   REPOSITORY: glasswallicap.azurecr.io
   IMAGE: mvp-icap-service
   RESOURCE_GROUP: gw-gks-icap-squid-proxy
-  FQDN: mvpicapservice
-  CONTAINER_NAME: mvp-icap-service
+  FQDN: icapservercloudproxy
+  CONTAINER_NAME: gw-icapserver-cloudproxy
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
