@@ -5,8 +5,8 @@ env:
   REPOSITORY: glasswallicap.azurecr.io
   IMAGE: mvp-icap-service
   RESOURCE_GROUP: gw-gks-icap-squid-proxy
-  FQDN: mvpicapservice
-  CONTAINER_NAME: mvp-icap-service
+  FQDN: icapservercloudproxy
+  CONTAINER_NAME: gw-icapserver-cloudproxy
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
@@ -30,7 +30,6 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
       with:
-              #        token: ${{ secrets.GW_SDK_TOKEN }} 
         submodules: true
 
     - name: 'Login via Azure CLI'
@@ -53,4 +52,4 @@ jobs:
     # Deploy the ICAP container to Azure container instances using the recent build image in Azure container registry 
     - name: Deploy the new image to Azure container instances
       run: | 
-        az container create --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CONTAINER_NAME }} -l "UK South" --image ${{ env.REPOSITORY }}/${{ env.IMAGE}}:${{ github.sha }} --registry-login-server ${{ env.REPOSITORY }} --registry-username ${{ secrets.REGISTRY_USER }} --registry-password ${{ secrets.REGISTRY_PASS }} --dns-name-label ${{ env.FQDN }}  --secure-environment-variables FileProcessingStorageConnectionString=${{ secrets.STORAGE_CONNECTION_STRING }} FileProcessingStorageOriginalStoreName=${{ secrets.STORAGE_STORE_NAME }} TransactionOutcomeQueueConnectionString=${{ secrets.QUEUE_CONNECTION_STRING }} TransactionOutcomeQueueName=${{ secrets.QUEUE_NAME }}
+        az container create --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CONTAINER_NAME }} -l "UK South" --image ${{ env.REPOSITORY }}/${{ env.IMAGE}}:${{ github.sha }} --registry-login-server ${{ env.REPOSITORY }} --registry-username ${{ secrets.REGISTRY_USER }} --registry-password ${{ secrets.REGISTRY_PASS }} --dns-name-label ${{ env.FQDN }} --ports 1344 --secure-environment-variables FileProcessingStorageConnectionString=${{ secrets.STORAGE_CONNECTION_STRING }} FileProcessingStorageOriginalStoreName=${{ secrets.STORAGE_STORE_NAME }} TransactionOutcomeQueueConnectionString=${{ secrets.QUEUE_CONNECTION_STRING }} TransactionOutcomeQueueName=${{ secrets.QUEUE_NAME }}
