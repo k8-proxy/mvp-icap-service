@@ -39,7 +39,7 @@ sudo apt-get install automake1.11
 ```
 
 ### Build the Server
-From where the repo was cloned to, navigate into the `c-icap/c-icap` folder and run the scripts to setup the Makefiles.
+From where the repo was cloned to, navigate into the `mvp-icap-service/c-icap` folder and run the scripts to setup the Makefiles.
 ```
 aclocal
 autoconf
@@ -61,7 +61,7 @@ make doc
 
 ### Build the Modules
 
-Navigate to the modules folder (`c-icap/c-icap-modules`) and run the scripts to setup the Makefiles.
+Navigate to the modules folder (`mvp-icap-service/c-icap-modules`) and run the scripts to setup the Makefiles.
 ```
 aclocal
 autoconf
