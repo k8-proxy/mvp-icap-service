@@ -36,14 +36,13 @@ sudo apt-get install -y doxygen
 sudo apt-get install make
 sudo apt-get install automake
 sudo apt-get install automake1.11
+sudo apt-get install libtool
 ```
 
 ### Build the Server
 From where the repo was cloned to, navigate into the `mvp-icap-service/c-icap` folder and run the scripts to setup the Makefiles.
 ```
-aclocal
-autoconf
-automake --add-missing
+autoreconf -i
 ```
 Run the configure script, specifying where the server should be installed, through the `prefix` argument.
 ```
@@ -63,9 +62,7 @@ make doc
 
 Navigate to the modules folder (`mvp-icap-service/c-icap-modules`) and run the scripts to setup the Makefiles.
 ```
-aclocal
-autoconf
-automake --add-missing
+autoreconf -i
 ```
 Run the configure script, specifing where the server was installed, in both the `with-c-icap` and `prefix` arguments.
 ```
