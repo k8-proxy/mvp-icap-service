@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: icap-service-config
+data:
+  FileProcessingStorageOriginalStoreName: "original-store"
+  TransactionOutcomeQueueName: "transaction-outcome"
+  TransactionOutcomeQueueConnectionString: = Connection String =
+  FileProcessingStorageConnectionString:  = Connection String =
