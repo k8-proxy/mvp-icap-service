@@ -33,7 +33,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
         }
 
-        internal async Task<int> RunAsync()
+        public async Task<int> RunAsync()
         {
             Guid inputFileId = Guid.NewGuid();
 
