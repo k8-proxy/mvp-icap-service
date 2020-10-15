@@ -23,4 +23,16 @@ spec:
           # The ConfigMap we want to use
           - configMapRef:
               name: icap-service-config
+          volumeMounts:
+            - name: source-vol
+              mountPath: "/var/source"
+            - name: target-vol
+              mountPath: "/var/target"
+      volumes:
+        - name: source-vol
+          persistentVolumeClaim:
+            claimName: glasswallsource-pvc
+        - name: target-vol
+          persistentVolumeClaim:
+            claimName: glasswalltarget-pvc
 
