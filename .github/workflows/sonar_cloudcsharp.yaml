@@ -1,7 +1,7 @@
 name: sonar-csharp
-env:
+env: 
   SONAR_ORG: filetrust-2
-  SONAR_PROJECT: MVPICAPTest
+  SONAR_PROJECT: MVP-ICAP-service-CSHarp
 on:
   push:
     branches: '*'
