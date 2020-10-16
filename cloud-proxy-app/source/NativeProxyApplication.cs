@@ -17,7 +17,6 @@ namespace Glasswall.IcapServer.CloudProxyApp
     {
         private readonly IAppConfiguration _appConfiguration;
         private readonly ILogger<NativeProxyApplication> _logger;
-        private readonly BlockingCollection<int> _returnOutcomeStatus;
         private readonly CancellationTokenSource _processingCancellationTokenSource;
         private readonly TimeSpan _processingTimeoutDuration = TimeSpan.FromSeconds(60);
         
@@ -35,12 +34,12 @@ namespace Glasswall.IcapServer.CloudProxyApp
         {
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _returnOutcomeStatus = new BlockingCollection<int>();
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
         }
 
         public Task<int> RunAsync()
         {
+            var returnOutcomeStatus = new BlockingCollection<int>();
             var fileId = Guid.NewGuid().ToString();
             try
             {
@@ -52,42 +51,11 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 _logger.LogInformation($"Updating 'Original' store for {fileId}");
                 File.Copy(_appConfiguration.InputFilepath, originalStoreFilePath);
 
-                using (var connection = GetQueueConnection())
-                using (var channel = connection.CreateModel())
-                {
-                    var queueDeclare = channel.QueueDeclare(queue: OutcomeQueueName,
-                                  durable: false,
-                                  exclusive: false,
-                                  autoDelete: false,
-                                  arguments: null);
-                    _logger.LogInformation($"Receive Request Queue '{queueDeclare.QueueName}' Declared : MessageCount = {queueDeclare.MessageCount},  ConsumerCount = {queueDeclare.ConsumerCount}");
-
-                    // This queue name needs to change once we can pick messages 
-                    channel.QueueBind(queue: OutcomeQueueName,
-                                      exchange: ExchangeName,
-                                      routingKey: ResponseMessageName);
-
-                    var consumer = new EventingBasicConsumer(channel);
-                    consumer.Received += (model, ea) =>
-                    {
-                        var body = ea.Body.ToArray();
-                        var message = Encoding.UTF8.GetString(body);
-                        _logger.LogInformation($"Received Outcome for {fileId}");
-                        _logger.LogDebug(message);
-
-                        var headers = ea.BasicProperties.Headers;
-
-                        _returnOutcomeStatus.Add((int)ReturnOutcome.GW_UNPROCESSED);
-
-                        channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
-                        _logger.LogInformation($"Acked Outcome for {fileId}");
-                    };
-                    channel.BasicConsume(consumer, OutcomeQueueName);
-                }
+                ListenForOutcome(fileId, returnOutcomeStatus);
 
                 SendRequest(fileId, originalStoreFilePath, rebuiltStoreFilePath);
 
-                var result = _returnOutcomeStatus.Take(processingCancellationToken);
+                var result = returnOutcomeStatus.Take(processingCancellationToken);
                 _logger.LogInformation($"Returning '{result}' Outcome for {fileId}");
 
                 return Task.FromResult(result);
@@ -101,6 +69,38 @@ namespace Glasswall.IcapServer.CloudProxyApp
             {
                 _logger.LogError(ex, $"Error Processing 'input' {fileId}");
                 return Task.FromResult((int)ReturnOutcome.GW_ERROR);
+            }
+        }
+
+        private void ListenForOutcome(string fileId, BlockingCollection<int> returnOutcomeStatus)
+        {
+            using (var connection = GetQueueConnection())
+            using (var channel = connection.CreateModel())
+            {
+                var queueDeclare = channel.QueueDeclare(queue: OutcomeQueueName,
+                              durable: false,
+                              exclusive: false,
+                              autoDelete: false,
+                              arguments: null);
+                _logger.LogInformation($"Receive Request Queue '{queueDeclare.QueueName}' Declared : MessageCount = {queueDeclare.MessageCount},  ConsumerCount = {queueDeclare.ConsumerCount}");
+
+                // This queue name needs to change once we can pick messages 
+                channel.QueueBind(queue: OutcomeQueueName,
+                                  exchange: ExchangeName,
+                                  routingKey: ResponseMessageName);
+
+                var consumer = new EventingBasicConsumer(channel);
+                consumer.Received += (model, ea) =>
+                {
+                    _logger.LogInformation($"Received Outcome for {fileId}");
+                    var headers = ea.BasicProperties.Headers;
+
+                    returnOutcomeStatus.Add((int)ReturnOutcome.GW_UNPROCESSED);
+
+                    channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                    _logger.LogInformation($"Acked Outcome for {fileId}");
+                };
+                channel.BasicConsume(consumer, OutcomeQueueName);
             }
         }
 
