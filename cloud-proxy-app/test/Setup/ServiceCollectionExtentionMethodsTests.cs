@@ -1,13 +1,8 @@
-﻿using Azure.Storage.Blobs;
-using Glasswall.IcapServer.CloudProxyApp.Configuration;
+﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Glasswall.IcapServer.CloudProxyApp.Setup;
-using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
 using NUnit.Framework;
-using System;
 using System.Collections.Generic;
 
 namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
@@ -16,35 +11,28 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
     {
         private ServiceCollection _serviceCollection;
         private ConfigurationBuilder _configurationBuilder;
-        private readonly Func<string, BlobServiceClient> _stubBlobFactory = StubBlobFactory;
-        private readonly Func<string, string, IQueueClient> _stubQueueFactory = StubQueueFactory;
-
-        private static BlobServiceClient StubBlobFactory(string name) { return new BlobServiceClient("test"); }
-        private static IQueueClient StubQueueFactory(string connectionString, string name) { return Mock.Of<IQueueClient>(); }
 
         [SetUp]
         public void ServiceCollectionExtentionMethodsTestsSetup()
         {
             _serviceCollection = new ServiceCollection();
-            _serviceCollection.AddSingleton(_stubBlobFactory);
-            _serviceCollection.AddSingleton(_stubQueueFactory);
             _configurationBuilder = new ConfigurationBuilder();
         }
 
         [Test]
-        public void CloudProxyApplication_is_added_as_singleton()
+        public void NativeProxyApplication_is_added_as_singleton()
         {
             // Arrange
             IConfiguration configuration = _configurationBuilder.Build();
 
             // Act
             var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
-            var cloudProxyApplication = serviceProvider.GetService<CloudProxyApplication>();
-            var secondCloudProxyApplication = serviceProvider.GetService<CloudProxyApplication>();
+            var nativeProxyApplication = serviceProvider.GetService<NativeProxyApplication>();
+            var secondNativeProxyApplication = serviceProvider.GetService<NativeProxyApplication>();
 
             // Assert
-            Assert.That(cloudProxyApplication, Is.Not.Null, "expected the object to be available");
-            Assert.AreSame(cloudProxyApplication, secondCloudProxyApplication, "expected the same object to be provided");
+            Assert.That(nativeProxyApplication, Is.Not.Null, "expected the object to be available");
+            Assert.AreSame(nativeProxyApplication, secondNativeProxyApplication, "expected the same object to be provided");
         }
 
         [Test]
@@ -129,20 +117,6 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
             Assert.That(appConfiguration.OutputFilepath, Is.EqualTo(TestOutputFilepath), "expected the output filepath to be bound");
         }
 
-        [Test]
-        public void StorageUploaded_is_added_as_transient()
-        {
-            // Arrange
-            IConfiguration configuration = _configurationBuilder.Build();
-
-            // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
-            var uploader = serviceProvider.GetService<IUploader>();
-            var secondUploader = serviceProvider.GetService<IUploader>();
-
-            // Assert
-            Assert.That(uploader, Is.Not.Null, "expected the object to be available");
-            Assert.AreNotSame(uploader, secondUploader, "don't expect the same object to be provided");
-        }
+     
     }
 }
