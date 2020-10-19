@@ -1,4 +1,5 @@
-﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
+﻿using Glasswall.IcapServer.CloudProxyApp.AdaptationService;
+using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
@@ -24,6 +25,8 @@ namespace Glasswall.IcapServer.CloudProxyApp
         private readonly IModel _outcomeQueueModel;
         private readonly EventingBasicConsumer _outcomeQueueConsumer;
 
+        private readonly IAdaptationServiceClient<AdaptationOutcomeProcessor> _adaptationServiceClient;
+
         private readonly string ExchangeName = "adaptation-exchange";
         private readonly string RequestQueueName = "adaptation-request-queue";
         private readonly string OutcomeQueueName = "adaptation-outcome-queue";
@@ -35,8 +38,9 @@ namespace Glasswall.IcapServer.CloudProxyApp
         readonly string RebuiltStorePath = "/var/target";
         private bool disposedValue;
 
-        public NativeProxyApplication(IAppConfiguration appConfiguration, ILogger<NativeProxyApplication> logger)
+        public NativeProxyApplication(IAdaptationServiceClient<AdaptationOutcomeProcessor> adaptationServiceClient, IAppConfiguration appConfiguration, ILogger<NativeProxyApplication> logger)
         {
+            _adaptationServiceClient = adaptationServiceClient ?? throw new ArgumentNullException(nameof(adaptationServiceClient));
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
@@ -48,26 +52,21 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         public Task<int> RunAsync()
         {
-            var returnOutcomeStatus = new BlockingCollection<int>();
-            var fileId = Guid.NewGuid().ToString();
+            var fileId = Guid.NewGuid();
             try
             {
                 var processingCancellationToken = _processingCancellationTokenSource.Token;
 
-                var originalStoreFilePath = Path.Combine(OriginalStorePath, fileId);
-                var rebuiltStoreFilePath = Path.Combine(RebuiltStorePath, fileId);
+                var originalStoreFilePath = Path.Combine(OriginalStorePath, fileId.ToString());
+                var rebuiltStoreFilePath = Path.Combine(RebuiltStorePath, fileId.ToString());
 
                 _logger.LogInformation($"Updating 'Original' store for {fileId}");
                 File.Copy(_appConfiguration.InputFilepath, originalStoreFilePath);
 
-                ListenForOutcome(fileId, returnOutcomeStatus);
+                var outcome = _adaptationServiceClient.Request(fileId, originalStoreFilePath, rebuiltStoreFilePath, processingCancellationToken);
+                _logger.LogInformation($"Returning '{outcome}' Outcome for {fileId}");
 
-                SendRequest(fileId, originalStoreFilePath, rebuiltStoreFilePath);
-
-                var result = returnOutcomeStatus.Take(processingCancellationToken);
-                _logger.LogInformation($"Returning '{result}' Outcome for {fileId}");
-
-                return Task.FromResult(result);
+                return Task.FromResult((int)outcome);
             }
             catch (OperationCanceledException oce)
             {
