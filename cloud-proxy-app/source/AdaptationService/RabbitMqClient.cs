@@ -12,9 +12,10 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 {
     public class RabbitMqClient<TResponseProcessor> : IAdaptationServiceClient<TResponseProcessor> where TResponseProcessor : IResponseProcessor
     {
-        private readonly IConnection _connection;
-        private readonly IModel _channel;
-        private readonly EventingBasicConsumer _consumer;
+        private readonly IConnectionFactory connectionFactory;
+        private IConnection _connection;
+        private IModel _channel;
+        private EventingBasicConsumer _consumer;
 
         private readonly BlockingCollection<ReturnOutcome> _respQueue = new BlockingCollection<ReturnOutcome>();
         private readonly IResponseProcessor _responseProcessor;
@@ -31,14 +32,21 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
         {
             _responseProcessor = responseProcessor ?? throw new ArgumentNullException(nameof(responseProcessor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            var factory = new ConnectionFactory()
+            connectionFactory = new ConnectionFactory()
             {
                 HostName = "rabbitmq-service",
                 Port = 5672,
                 UserName = ConnectionFactory.DefaultUser,
                 Password = ConnectionFactory.DefaultPass
             };
-            _connection = factory.CreateConnection();
+        }
+
+        public void Connect()
+        {
+            if (_connection != null || _channel != null || _consumer != null)
+                throw new AdaptationServiceClientException("'Connect' should only be called once.");
+
+            _connection = connectionFactory.CreateConnection();
             _channel = _connection.CreateModel();
             _consumer = new EventingBasicConsumer(_channel);
 
@@ -65,7 +73,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
                     _respQueue.Add(response);
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Error Processing 'input'");
                     _respQueue.Add(ReturnOutcome.GW_ERROR);
@@ -75,6 +83,9 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
         public ReturnOutcome AdaptationRequest(Guid fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken)
         {
+            if (_connection == null || _channel == null || _consumer == null)
+                throw new AdaptationServiceClientException("'Connect' should be called before 'AdaptationRequest'.");
+
             var queueDeclare = _channel.QueueDeclare(queue: RequestQueueName,
                                                           durable: false,
                                                           exclusive: false,
@@ -107,5 +118,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
             return _respQueue.Take(processingCancellationToken);
         }
+
+  
     }
 }
