@@ -1,7 +1,7 @@
 using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using NUnit.Framework;
 
-namespace Tests
+namespace Glasswall.IcapServer.CloudProxyApp.Tests.Configuration
 {
     public class CloudProxyApplicationConfigurationCheckerTests
     {
