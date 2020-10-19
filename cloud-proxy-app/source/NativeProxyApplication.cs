@@ -13,13 +13,17 @@ using System.Threading.Tasks;
 
 namespace Glasswall.IcapServer.CloudProxyApp
 {
-    public class NativeProxyApplication
+    public class NativeProxyApplication : IDisposable
     {
         private readonly IAppConfiguration _appConfiguration;
         private readonly ILogger<NativeProxyApplication> _logger;
         private readonly CancellationTokenSource _processingCancellationTokenSource;
         private readonly TimeSpan _processingTimeoutDuration = TimeSpan.FromSeconds(60);
-        
+
+        private readonly IConnection _outcomeQueueConnection;
+        private readonly IModel _outcomeQueueModel;
+        private readonly EventingBasicConsumer _outcomeQueueConsumer;
+
         private readonly string ExchangeName = "adaptation-exchange";
         private readonly string RequestQueueName = "adaptation-request-queue";
         private readonly string OutcomeQueueName = "adaptation-outcome-queue";
@@ -29,12 +33,17 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         readonly string OriginalStorePath = "/var/source";
         readonly string RebuiltStorePath = "/var/target";
+        private bool disposedValue;
 
         public NativeProxyApplication(IAppConfiguration appConfiguration, ILogger<NativeProxyApplication> logger)
         {
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
+
+            _outcomeQueueConnection = GetQueueConnection();
+            _outcomeQueueModel = _outcomeQueueConnection.CreateModel();
+            _outcomeQueueConsumer = new EventingBasicConsumer(_outcomeQueueModel);
         }
 
         public Task<int> RunAsync()
@@ -74,34 +83,28 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         private void ListenForOutcome(string fileId, BlockingCollection<int> returnOutcomeStatus)
         {
-            using (var connection = GetQueueConnection())
-            using (var channel = connection.CreateModel())
+            var queueDeclare = _outcomeQueueModel.QueueDeclare(queue: OutcomeQueueName,
+                          durable: false,
+                          exclusive: false,
+                          autoDelete: false,
+                          arguments: null);
+            _logger.LogInformation($"Receive Request Queue '{queueDeclare.QueueName}' Declared : MessageCount = {queueDeclare.MessageCount},  ConsumerCount = {queueDeclare.ConsumerCount}");
+
+            _outcomeQueueModel.QueueBind(queue: OutcomeQueueName,
+                              exchange: ExchangeName,
+                              routingKey: ResponseMessageName);
+
+            _outcomeQueueConsumer.Received += (model, ea) =>
             {
-                var queueDeclare = channel.QueueDeclare(queue: OutcomeQueueName,
-                              durable: false,
-                              exclusive: false,
-                              autoDelete: false,
-                              arguments: null);
-                _logger.LogInformation($"Receive Request Queue '{queueDeclare.QueueName}' Declared : MessageCount = {queueDeclare.MessageCount},  ConsumerCount = {queueDeclare.ConsumerCount}");
+                _logger.LogInformation($"Received Outcome for {fileId}");
+                var headers = ea.BasicProperties.Headers;
 
-                // This queue name needs to change once we can pick messages 
-                channel.QueueBind(queue: OutcomeQueueName,
-                                  exchange: ExchangeName,
-                                  routingKey: ResponseMessageName);
+                returnOutcomeStatus.Add((int)ReturnOutcome.GW_UNPROCESSED);
 
-                var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += (model, ea) =>
-                {
-                    _logger.LogInformation($"Received Outcome for {fileId}");
-                    var headers = ea.BasicProperties.Headers;
-
-                    returnOutcomeStatus.Add((int)ReturnOutcome.GW_UNPROCESSED);
-
-                    channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
-                    _logger.LogInformation($"Acked Outcome for {fileId}");
-                };
-                channel.BasicConsume(consumer, OutcomeQueueName);
-            }
+                _outcomeQueueModel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                _logger.LogInformation($"Acked Outcome for {fileId}");
+            };
+            _outcomeQueueModel.BasicConsume(_outcomeQueueConsumer, OutcomeQueueName);
         }
 
         private void SendRequest(string fileId, string originalStoreFilePath, string rebuiltStoreFilePath)
@@ -145,7 +148,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         }
 
-        private IConnection GetQueueConnection()
+        private static IConnection GetQueueConnection()
         {
             var factory = new ConnectionFactory()
             {
@@ -155,6 +158,26 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 Password = ConnectionFactory.DefaultPass
             };
             return factory.CreateConnection();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _outcomeQueueModel.Dispose();
+                    _outcomeQueueConnection.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
