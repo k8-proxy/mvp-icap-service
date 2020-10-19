@@ -49,6 +49,10 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
                       arguments: null);
             _logger.LogInformation($"Receive Request Queue '{queueDeclare.QueueName}' Declared : MessageCount = {queueDeclare.MessageCount},  ConsumerCount = {queueDeclare.ConsumerCount}");
 
+            _channel.QueueBind(queue: OutcomeQueueName,
+                                exchange: ExchangeName,
+                                routingKey: ResponseMessageName);
+
             _consumer.Received += (model, ea) =>
             {
                 try
@@ -69,7 +73,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
             };
         }
 
-        public ReturnOutcome Request(Guid fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken)
+        public ReturnOutcome AdaptationRequest(Guid fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken)
         {
             var queueDeclare = _channel.QueueDeclare(queue: RequestQueueName,
                                                           durable: false,
