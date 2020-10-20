@@ -2,7 +2,7 @@
 
 namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 {
-    class AdaptationServiceClientException : ApplicationException
+    public class AdaptationServiceClientException : ApplicationException
     {
         public AdaptationServiceClientException()
         {
