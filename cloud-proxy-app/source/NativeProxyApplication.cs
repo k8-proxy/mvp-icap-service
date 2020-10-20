@@ -40,7 +40,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 var rebuiltStoreFilePath = Path.Combine(RebuiltStorePath, fileId.ToString());
 
                 _logger.LogInformation($"Updating 'Original' store for {fileId}");
-                File.Copy(_appConfiguration.InputFilepath, originalStoreFilePath);
+                File.Copy(_appConfiguration.InputFilepath, originalStoreFilePath, overwrite:true);
 
                 _adaptationServiceClient.Connect();
                 var outcome = _adaptationServiceClient.AdaptationRequest(fileId, originalStoreFilePath, rebuiltStoreFilePath, processingCancellationToken);
@@ -65,6 +65,5 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 return Task.FromResult((int)ReturnOutcome.GW_ERROR);
             }
         }
-
     }
 }

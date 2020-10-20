@@ -26,31 +26,27 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
         {
             try
             {
-                if (body == null)
-                {
-                    _logger.LogError($"Returning body content missing");
-                    return ReturnOutcome.GW_ERROR;
-                }
+                Guid fileId = Guid.Empty;
+                if (!headers.ContainsKey("file-id"))
+                    throw NewAdaptationServiceException("Missing File Id");
 
-                var bodyContent = Encoding.UTF8.GetString(body);
-                dynamic outcomeResponse = JsonConvert.DeserializeObject<dynamic>(bodyContent);
-
-                var fileIdString = Convert.ToString(outcomeResponse.FileId);
-                var fileId = Guid.Empty;
+                var fileIdString = Encoding.UTF8.GetString((byte[])headers["file-id"]);
                 if (fileIdString == null || !Guid.TryParse(fileIdString, out fileId))
                 {
-                    _logger.LogError($"Returning outcome fileId");
+                    _logger.LogError($"Error in FileID: {fileIdString ?? "-"}");
                     return ReturnOutcome.GW_ERROR;
                 }
 
-                var outcomeString = Convert.ToString(outcomeResponse.FileOutcome);
+                if (!headers.ContainsKey("file-outcome"))
+                    throw NewAdaptationServiceException($"Missing outcome for File Id {fileId}");
+
+                var outcomeString = Encoding.UTF8.GetString((byte[])headers["file-outcome"]);
                 AdaptationOutcome outcome = (AdaptationOutcome)Enum.Parse(typeof(AdaptationOutcome), outcomeString, ignoreCase: true);
                 if (!OutcomeMap.ContainsKey(outcome))
                 {
-                    _logger.LogError($"Returning outcome unmapped: {outcomeString}");
+                    _logger.LogError($"Returning outcome unmapped: {outcomeString} for File Id {fileId}");
                     return ReturnOutcome.GW_ERROR;
                 }
-
                 return OutcomeMap[outcome];
             }
             catch (ArgumentException aex)
@@ -63,6 +59,16 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
                 _logger.LogError($"Poorly formated adaptation outcome : {jre.Message}");
                 return ReturnOutcome.GW_ERROR;
             }
+            catch (AdaptationServiceClientException asce)
+            {
+                _logger.LogError($"Poorly formated adaptation outcome : {asce.Message}");
+                return ReturnOutcome.GW_ERROR;
+            }
+        }
+
+        private AdaptationServiceClientException NewAdaptationServiceException(string message)
+        {
+            return new AdaptationServiceClientException(message);
         }
     }
 }

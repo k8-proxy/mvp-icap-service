@@ -15,11 +15,14 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.AdaptationService
 
             // Arrange
             var processor = new AdaptationOutcomeProcessor(Mock.Of<ILogger<AdaptationOutcomeProcessor>>());
-            var headers = Mock.Of<IDictionary<string, object>>();
-            var body = "{ \"FileId\":\"737ba1cc-492c-4292-9a2c-fc7bfc722dc6\",\"FileOutcome\":\"replace\",\"OutcomeHeader\":null,\"OutcomeMessage\":null}";
+            IDictionary<string, object> headerMap = new Dictionary<string, object>
+                    {
+                        { "file-id", Encoding.UTF8.GetBytes("737ba1cc-492c-4292-9a2c-fc7bfc722dc6") },
+                        { "file-outcome", Encoding.UTF8.GetBytes("replace") }
+                    };
 
             // Act
-            var result = processor.Process(headers, Encoding.UTF8.GetBytes(body));
+            var result = processor.Process(headerMap, null);
 
             // Assert
             Assert.That(result, Is.EqualTo(ReturnOutcome.GW_REBUILT), "expected the outcome to be 'rebuilt'");
@@ -30,11 +33,14 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.AdaptationService
         {
             // Arrange
             var processor = new AdaptationOutcomeProcessor(Mock.Of<ILogger<AdaptationOutcomeProcessor>>());
-            var headers = Mock.Of<IDictionary<string, object>>();
-            var body = "{ \"FileId\":\"737ba1cc-492c-4292-9a2c-fc7bfc722dc6\",\"FileOutcome\":\"unmodified\",\"OutcomeHeader\":null,\"OutcomeMessage\":null}";
+            IDictionary<string, object> headerMap = new Dictionary<string, object>
+                    {
+                        { "file-id", Encoding.UTF8.GetBytes("737ba1cc-492c-4292-9a2c-fc7bfc722dc6") },
+                        { "file-outcome", Encoding.UTF8.GetBytes("unmodified") },
+                    };
 
             // Act
-            var result = processor.Process(headers, Encoding.UTF8.GetBytes(body));
+            var result = processor.Process(headerMap, null);
 
             // Assert
             Assert.That(result, Is.EqualTo(ReturnOutcome.GW_UNPROCESSED), "expected the outcome to be 'unprocessed'");
@@ -45,11 +51,14 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.AdaptationService
         {
             // Arrange
             var processor = new AdaptationOutcomeProcessor(Mock.Of<ILogger<AdaptationOutcomeProcessor>>());
-            var headers = Mock.Of<IDictionary<string, object>>();
-            var body = "{ \"FileId\":\"737ba1cc-492c-4292-9a2c-fc7bfc722dc6\",\"FileOutcome\":\"failed\",\"OutcomeHeader\":null,\"OutcomeMessage\":null}";
+            IDictionary<string, object> headerMap = new Dictionary<string, object>
+                    {
+                        { "file-id", Encoding.UTF8.GetBytes("737ba1cc-492c-4292-9a2c-fc7bfc722dc6") },
+                        { "file-outcome", Encoding.UTF8.GetBytes("failed") },
+                    };
 
             // Act
-            var result = processor.Process(headers, Encoding.UTF8.GetBytes(body));
+            var result = processor.Process(headerMap, null);
 
             // Assert
             Assert.That(result, Is.EqualTo(ReturnOutcome.GW_FAILED), "expected the outcome to be 'failed'");
@@ -60,28 +69,15 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.AdaptationService
         {
             // Arrange
             var processor = new AdaptationOutcomeProcessor(Mock.Of<ILogger<AdaptationOutcomeProcessor>>());
-            var headers = Mock.Of<IDictionary<string, object>>();
-            var body = "-- Incorrect Message --";
+            IDictionary<string, object> headerMap = new Dictionary<string, object>();
 
             // Act
-            var result = processor.Process(headers, Encoding.UTF8.GetBytes(body));
+            var result = processor.Process(headerMap, null);
 
             // Assert
             Assert.That(result, Is.EqualTo(ReturnOutcome.GW_ERROR), "expected the outcome to be 'error'");
         }
 
-        [Test]
-        public void Missing_Body_Error_Outcome()
-        {
-            // Arrange
-            var processor = new AdaptationOutcomeProcessor(Mock.Of<ILogger<AdaptationOutcomeProcessor>>());
-            var headers = Mock.Of<IDictionary<string, object>>();
 
-            // Act
-            var result = processor.Process(headers, null);
-
-            // Assert
-            Assert.That(result, Is.EqualTo(ReturnOutcome.GW_ERROR), "expected the outcome to be 'error'");
-        }
     }
 }

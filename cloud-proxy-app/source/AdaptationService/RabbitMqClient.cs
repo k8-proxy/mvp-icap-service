@@ -23,7 +23,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
         private readonly string ExchangeName = "adaptation-exchange";
         private readonly string RequestQueueName = "adaptation-request-queue";
-        private readonly string OutcomeQueueName = "adaptation-outcome-queue";
+        private readonly string OutcomeQueueName = "amq.rabbitmq.reply-to";
 
         private readonly string RequestMessageName = "adaptation-request";
         private readonly string ResponseMessageName = "adaptation-outcome";
@@ -50,21 +50,11 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
             _channel = _connection.CreateModel();
             _consumer = new EventingBasicConsumer(_channel);
 
-            var queueDeclare = _channel.QueueDeclare(queue: OutcomeQueueName,
-                      durable: false,
-                      exclusive: false,
-                      autoDelete: false,
-                      arguments: null);
-            _logger.LogInformation($"Receive Request Queue '{queueDeclare.QueueName}' Declared : MessageCount = {queueDeclare.MessageCount},  ConsumerCount = {queueDeclare.ConsumerCount}");
-
-            _channel.QueueBind(queue: OutcomeQueueName,
-                                exchange: ExchangeName,
-                                routingKey: ResponseMessageName);
-
             _consumer.Received += (model, ea) =>
             {
                 try
                 {
+                    _logger.LogInformation($"Received message: Exchange Name: '{ea.Exchange}', Routing Key: '{ea.RoutingKey}', CorrelationId: '{ea.BasicProperties.CorrelationId}'");
                     var headers = ea.BasicProperties.Headers;
                     var body = ea.Body.ToArray();
 
@@ -106,19 +96,19 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
             var messageProperties = _channel.CreateBasicProperties();
             messageProperties.Headers = headerMap;
+            messageProperties.ReplyTo = OutcomeQueueName;
+            messageProperties.CorrelationId = fileId.ToString();
 
             _logger.LogInformation($"Sending {RequestMessageName} for {fileId}");
+
+            _channel.BasicConsume(_consumer, OutcomeQueueName, autoAck: true);
 
             _channel.BasicPublish(exchange: ExchangeName,
                                  routingKey: RequestMessageName,
                                  basicProperties: messageProperties,
                                  body: body);
 
-            _channel.BasicConsume(_consumer, OutcomeQueueName);
-
             return _respQueue.Take(processingCancellationToken);
         }
-
-  
     }
 }
