@@ -1,6 +1,5 @@
-﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
-using Glasswall.IcapServer.CloudProxyApp.QueueAccess;
-using Glasswall.IcapServer.CloudProxyApp.StorageAccess;
+﻿using Glasswall.IcapServer.CloudProxyApp.AdaptationService;
+using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,9 +12,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Setup
         {
             serviceCollection.AddLogging(configure => configure.AddConsole());
 
-            serviceCollection.AddSingleton<CloudProxyApplication>();
-            serviceCollection.AddTransient<IUploader, StorageUploader>();
-            serviceCollection.AddTransient<IServiceQueueClient, ServiceBusQueueClient>();
+            serviceCollection.AddSingleton<NativeProxyApplication>();
 
             var appConfig = new CloudProxyApplicationConfiguration();
             configuration.Bind(appConfig);
@@ -24,6 +21,9 @@ namespace Glasswall.IcapServer.CloudProxyApp.Setup
             var cloudConfig = new CloudProxyCloudConfiguration();
             configuration.Bind(cloudConfig);
             serviceCollection.AddSingleton<ICloudConfiguration>(cloudConfig);
+
+            serviceCollection.AddTransient(typeof(IAdaptationServiceClient<>), typeof(RabbitMqClient<>));
+            serviceCollection.AddTransient<IResponseProcessor, AdaptationOutcomeProcessor>();
 
             return serviceCollection;
         }

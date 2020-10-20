@@ -24,10 +24,9 @@ namespace Glasswall.IcapServer.CloudProxyApp
             {
                 var services = new ServiceCollection();
                 _serviceProvider = services.
-                    ConfigureCloudFactories().                    
                     ConfigureServices(configuration).
                     BuildServiceProvider(true);
-                return await _serviceProvider.GetRequiredService<CloudProxyApplication>().RunAsync();
+                return await _serviceProvider.GetRequiredService<NativeProxyApplication>().RunAsync();
             }
             catch(InvalidApplicationConfigurationException iace)
             {
