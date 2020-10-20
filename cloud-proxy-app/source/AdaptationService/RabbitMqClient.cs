@@ -26,7 +26,6 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
         private readonly string OutcomeQueueName = "amq.rabbitmq.reply-to";
 
         private readonly string RequestMessageName = "adaptation-request";
-        private readonly string ResponseMessageName = "adaptation-outcome";
 
         public RabbitMqClient(IResponseProcessor responseProcessor, ILogger<RabbitMqClient<TResponseProcessor>> logger)
         {
