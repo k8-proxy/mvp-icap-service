@@ -53,7 +53,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
             {
                 try
                 {
-                    _logger.LogInformation($"Received message: Exchange Name: '{ea.Exchange}', Routing Key: '{ea.RoutingKey}', CorrelationId: '{ea.BasicProperties.CorrelationId}'");
+                    _logger.LogInformation($"Received message: Exchange Name: '{ea.Exchange}', Routing Key: '{ea.RoutingKey}'");
                     var headers = ea.BasicProperties.Headers;
                     var body = ea.Body.ToArray();
 
@@ -96,7 +96,6 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
             var messageProperties = _channel.CreateBasicProperties();
             messageProperties.Headers = headerMap;
             messageProperties.ReplyTo = OutcomeQueueName;
-            messageProperties.CorrelationId = fileId.ToString();
 
             _logger.LogInformation($"Sending {RequestMessageName} for {fileId}");
 
