@@ -72,6 +72,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
         {
             try
             {
+                _logger.LogInformation($"Clearing stores '{originalStoreFilePath}' and {rebuiltStoreFilePath}");
                 File.Delete(originalStoreFilePath);
                 File.Delete(rebuiltStoreFilePath);
             }
