@@ -52,6 +52,8 @@ namespace Glasswall.IcapServer.CloudProxyApp
                     File.Copy(rebuiltStoreFilePath, _appConfiguration.OutputFilepath, overwrite: true);
                 }
 
+                ClearStores(originalStoreFilePath, rebuiltStoreFilePath);
+
                 return Task.FromResult((int)outcome);
             }
             catch (OperationCanceledException oce)
@@ -64,6 +66,20 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 _logger.LogError(ex, $"Error Processing 'input' {fileId}");
                 return Task.FromResult((int)ReturnOutcome.GW_ERROR);
             }
+        }
+
+        private void ClearStores(string originalStoreFilePath, string rebuiltStoreFilePath)
+        {
+            try
+            {
+                File.Delete(originalStoreFilePath);
+                File.Delete(rebuiltStoreFilePath);
+            }
+
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, $"Error whilst attempting to clear stores: {ex.Message}");
+            }   
         }
     }
 }
