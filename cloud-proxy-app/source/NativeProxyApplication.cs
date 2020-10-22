@@ -44,7 +44,6 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
                 _adaptationServiceClient.Connect();
                 var outcome = _adaptationServiceClient.AdaptationRequest(fileId, originalStoreFilePath, rebuiltStoreFilePath, processingCancellationToken);
-                _logger.LogInformation($"Returning '{outcome}' Outcome for {fileId}");
 
                 if (outcome == ReturnOutcome.GW_REBUILT)
                 {
@@ -52,6 +51,9 @@ namespace Glasswall.IcapServer.CloudProxyApp
                     File.Copy(rebuiltStoreFilePath, _appConfiguration.OutputFilepath, overwrite: true);
                 }
 
+                ClearStores(originalStoreFilePath, rebuiltStoreFilePath);
+
+                _logger.LogInformation($"Returning '{outcome}' Outcome for {fileId}");
                 return Task.FromResult((int)outcome);
             }
             catch (OperationCanceledException oce)
@@ -64,6 +66,21 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 _logger.LogError(ex, $"Error Processing 'input' {fileId}");
                 return Task.FromResult((int)ReturnOutcome.GW_ERROR);
             }
+        }
+
+        private void ClearStores(string originalStoreFilePath, string rebuiltStoreFilePath)
+        {
+            try
+            {
+                _logger.LogInformation($"Clearing stores '{originalStoreFilePath}' and {rebuiltStoreFilePath}");
+                File.Delete(originalStoreFilePath);
+                File.Delete(rebuiltStoreFilePath);
+            }
+
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, $"Error whilst attempting to clear stores: {ex.Message}");
+            }   
         }
     }
 }
