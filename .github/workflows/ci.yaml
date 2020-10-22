@@ -1,6 +1,6 @@
 name: CI
 env:
-  DOCKERHUB_USERNAME: icapserviceaccount
+  ICAPDOCKER_USERNAME: icapserviceaccount
   REPOSITORY: glasswallsolutions
   IMAGE: mvp-icap-service
   TAG: develop
