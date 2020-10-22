@@ -44,7 +44,6 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
                 _adaptationServiceClient.Connect();
                 var outcome = _adaptationServiceClient.AdaptationRequest(fileId, originalStoreFilePath, rebuiltStoreFilePath, processingCancellationToken);
-                _logger.LogInformation($"Returning '{outcome}' Outcome for {fileId}");
 
                 if (outcome == ReturnOutcome.GW_REBUILT)
                 {
@@ -54,6 +53,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
                 ClearStores(originalStoreFilePath, rebuiltStoreFilePath);
 
+                _logger.LogInformation($"Returning '{outcome}' Outcome for {fileId}");
                 return Task.FromResult((int)outcome);
             }
             catch (OperationCanceledException oce)
