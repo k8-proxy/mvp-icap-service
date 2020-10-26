@@ -338,13 +338,24 @@ docker build -t c-icap-server .
 ```
 
 ### Running the Docker Image 
-The Proxy API App requires a number of environment variables to be configured to enable it to connect to the resources on which it is dependent. These are described in the sections above. They are provided on the `docker run` command-line when starting the Docker container.
+A number of Proxy API App parameters can be configured through environment variable. The following table details the available configurable items. Some of the configuration items are optional. If they are not provided, then the default value is used instead.
+
+|Configuration Name | Description | Default |
+|:------------------|:------------|:--------|
+|ProcessingTimeoutDuration | Time permitted for document processing. | 00:01:00 (60s) |
+|OriginalStorePath | The file path of the folder where the received content should be written. | `/var/source` |
+|RebuiltStorePath | The file path of the folder into which rebuilt content should be written. | `/var/target` |
+|ExchangeName | The exchange name in the Message Broker used to send Adaptation Request Messages. | `adaptation-exchange` |
+|RequestQueueName | The queue name used to send the Adaptation Request Messages. | `adaptation-request-queue` |
+|OutcomeQueueName | The queue name used to recieve the Adaptation Outcome Messages.| `amq.rabbitmq.reply-to` |
+|RequestMessageName | The message name used as a routing key for the Adaptation Request. | `adaptation-request` |
+|MBHostName | The hostname of the RabbitMQ Message Broker hosting the Adaptation Request Queue. | `rabbitmq-service` |
+|MBPort | The port number on which the RabbitMQ Message Broker is available, | `5672` |
+ 
+The following `docker run` command-line provides an example instance of the service.
 ```
 docker run -d \
--e TransactionOutcomeQueueName='local-transaction-outcome' \
--e TransactionOutcomeQueueConnectionString='AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlm' \
--e FileProcessingStorageConnectionString='AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlm' \
--e FileProcessingStorageOriginalStoreName='local-original' \
+ -e MBHostName='test-rabbitmq-service' \
  -p 1344:1344 \
  c-icap-server:latest
 ```
