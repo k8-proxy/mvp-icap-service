@@ -14,8 +14,8 @@ namespace Glasswall.IcapServer.CloudProxyApp.QueueAccess
         {
         }
 
-        public InvalidMessageException(string actualMessage, string expectedMessage) 
-            :base($"Received '{actualMessage}' when '{expectedMessage}' was expected")
+        public InvalidMessageException(string actualMessage, string expectedMessage)
+            : base($"Received '{actualMessage}' when '{expectedMessage}' was expected")
         {
         }
 

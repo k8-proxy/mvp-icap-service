@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -19,22 +20,18 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
         private readonly BlockingCollection<ReturnOutcome> _respQueue = new BlockingCollection<ReturnOutcome>();
         private readonly IResponseProcessor _responseProcessor;
+        private readonly IQueueConfiguration _queueConfiguration;
         private readonly ILogger<RabbitMqClient<TResponseProcessor>> _logger;
 
-        private readonly string ExchangeName = "adaptation-exchange";
-        private readonly string RequestQueueName = "adaptation-request-queue";
-        private readonly string OutcomeQueueName = "amq.rabbitmq.reply-to";
-
-        private readonly string RequestMessageName = "adaptation-request";
-
-        public RabbitMqClient(IResponseProcessor responseProcessor, ILogger<RabbitMqClient<TResponseProcessor>> logger)
+        public RabbitMqClient(IResponseProcessor responseProcessor, IQueueConfiguration queueConfiguration, ILogger<RabbitMqClient<TResponseProcessor>> logger)
         {
             _responseProcessor = responseProcessor ?? throw new ArgumentNullException(nameof(responseProcessor));
+            _queueConfiguration = queueConfiguration ?? throw new ArgumentNullException(nameof(queueConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             connectionFactory = new ConnectionFactory()
             {
-                HostName = "rabbitmq-service",
-                Port = 5672,
+                HostName = queueConfiguration.MBHostName,
+                Port = queueConfiguration.MBPort,
                 UserName = ConnectionFactory.DefaultUser,
                 Password = ConnectionFactory.DefaultPass
             };
@@ -75,7 +72,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
             if (_connection == null || _channel == null || _consumer == null)
                 throw new AdaptationServiceClientException("'Connect' should be called before 'AdaptationRequest'.");
 
-            var queueDeclare = _channel.QueueDeclare(queue: RequestQueueName,
+            var queueDeclare = _channel.QueueDeclare(queue: _queueConfiguration.RequestQueueName,
                                                           durable: false,
                                                           exclusive: false,
                                                           autoDelete: false,
@@ -95,14 +92,14 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
             var messageProperties = _channel.CreateBasicProperties();
             messageProperties.Headers = headerMap;
-            messageProperties.ReplyTo = OutcomeQueueName;
+            messageProperties.ReplyTo = _queueConfiguration.OutcomeQueueName;
 
-            _logger.LogInformation($"Sending {RequestMessageName} for {fileId}");
+            _logger.LogInformation($"Sending {_queueConfiguration.RequestMessageName} for {fileId}");
 
-            _channel.BasicConsume(_consumer, OutcomeQueueName, autoAck: true);
+            _channel.BasicConsume(_consumer, _queueConfiguration.OutcomeQueueName, autoAck: true);
 
-            _channel.BasicPublish(exchange: ExchangeName,
-                                 routingKey: RequestMessageName,
+            _channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
+                                 routingKey: _queueConfiguration.RequestMessageName,
                                  basicProperties: messageProperties,
                                  body: body);
 
