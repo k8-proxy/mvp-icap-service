@@ -36,47 +36,6 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
         }
 
         [Test]
-        public void CloudConfiguration_is_added_as_singleton()
-        {
-            // Arrange
-            IConfiguration configuration = _configurationBuilder.Build();
-
-            // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
-            var cloudConfiguration = serviceProvider.GetService<ICloudConfiguration>();
-            var secondCloudConfiguration = serviceProvider.GetService<ICloudConfiguration>();
-
-            // Assert
-            Assert.That(cloudConfiguration, Is.Not.Null, "expected the object to be available");
-            Assert.AreSame(cloudConfiguration, secondCloudConfiguration, "expected the same object to be provided");
-        }
-
-        [Test]
-        public void Supplied_CloudConfiguration_is_bound()
-        {
-            // Arrange
-            const string TestFileProcessingStorageConnectionString = "test FileProcessingStorageConnectionString";
-            const string TestFileProcessingStorageOriginalStoreName = "test FileProcessingStorageOriginalStoreName";
-            var testConfiguration = new Dictionary<string, string>()
-            {
-                [nameof(ICloudConfiguration.FileProcessingStorageConnectionString)] = TestFileProcessingStorageConnectionString,
-                [nameof(ICloudConfiguration.FileProcessingStorageOriginalStoreName)] = TestFileProcessingStorageOriginalStoreName
-            };
-
-            IConfiguration configuration = _configurationBuilder
-                                                    .AddInMemoryCollection(testConfiguration)
-                                                    .Build();
-
-            // Act
-            var serviceProvider = _serviceCollection.ConfigureServices(configuration).BuildServiceProvider(true);
-            var cloudConfiguration = serviceProvider.GetService<ICloudConfiguration>();
-
-            // Assert
-            Assert.That(cloudConfiguration.FileProcessingStorageConnectionString, Is.EqualTo(TestFileProcessingStorageConnectionString), "expected the connection string configuration to be bound");
-            Assert.That(cloudConfiguration.FileProcessingStorageOriginalStoreName, Is.EqualTo(TestFileProcessingStorageOriginalStoreName), "expected the store name configuration to be bound");
-        }
-
-        [Test]
         public void ApplicationConfiguration_is_added_as_singleton()
         {
             // Arrange
