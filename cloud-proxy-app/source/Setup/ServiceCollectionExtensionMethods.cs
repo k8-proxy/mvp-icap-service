@@ -1,4 +1,5 @@
 ﻿using Glasswall.IcapServer.CloudProxyApp.AdaptationService;
+using Glasswall.IcapServer.CloudProxyApp.ConfigLoaders;
 using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,11 +23,11 @@ namespace Glasswall.IcapServer.CloudProxyApp.Setup
             configuration.Bind(queueConfig);
             serviceCollection.AddSingleton<IQueueConfiguration>(queueConfig);
 
-            var storeConfig = new AdaptationStoreConfiguration();
+            var storeConfig = AdaptationStoreConfigLoader.SetDefaults(new AdaptationStoreConfiguration());
             configuration.Bind(storeConfig);
             serviceCollection.AddSingleton<IStoreConfiguration>(storeConfig);
 
-            var processingConfig = new IcapProcessingConfiguration();
+            var processingConfig = IcapProcessingConfigLoader.SetDefaults(new IcapProcessingConfiguration());
             configuration.Bind(processingConfig);
             serviceCollection.AddSingleton<IProcessingConfiguration>(processingConfig);
 
