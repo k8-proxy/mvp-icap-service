@@ -28,6 +28,8 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
             _responseProcessor = responseProcessor ?? throw new ArgumentNullException(nameof(responseProcessor));
             _queueConfiguration = queueConfiguration ?? throw new ArgumentNullException(nameof(queueConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            _logger.LogInformation($"Setting up queue connection '{queueConfiguration.MBHostName}:{queueConfiguration.MBPort}'");
             connectionFactory = new ConnectionFactory()
             {
                 HostName = queueConfiguration.MBHostName,
