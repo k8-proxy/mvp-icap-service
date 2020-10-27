@@ -1,3 +1,4 @@
+  
 name: sonar-csharp
 env: 
   SONAR_ORG: filetrust-2
@@ -8,7 +9,7 @@ on:
     paths:
       - 'cloud-proxy-app/**'
   pull_request:
-    branches: [ master ]
+    branches: [ develop ]
     paths:
       - 'cloud-proxy-app/**'
 jobs:
