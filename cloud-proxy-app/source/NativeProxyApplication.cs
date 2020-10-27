@@ -13,20 +13,21 @@ namespace Glasswall.IcapServer.CloudProxyApp
         private readonly IAppConfiguration _appConfiguration;
         private readonly ILogger<NativeProxyApplication> _logger;
         private readonly CancellationTokenSource _processingCancellationTokenSource;
-        private readonly TimeSpan _processingTimeoutDuration = TimeSpan.FromSeconds(60);
+        private readonly TimeSpan _processingTimeoutDuration;
+        private readonly string OriginalStorePath;
+        private readonly string RebuiltStorePath;
 
         private readonly IAdaptationServiceClient<AdaptationOutcomeProcessor> _adaptationServiceClient;
 
-        readonly string OriginalStorePath;
-        readonly string RebuiltStorePath;
-
         public NativeProxyApplication(IAdaptationServiceClient<AdaptationOutcomeProcessor> adaptationServiceClient,
-            IAppConfiguration appConfiguration, IStoreConfiguration storeConfiguration, ILogger<NativeProxyApplication> logger)
+            IAppConfiguration appConfiguration, IStoreConfiguration storeConfiguration, IProcessingConfiguration processingConfiguration, ILogger<NativeProxyApplication> logger)
         {
             _adaptationServiceClient = adaptationServiceClient ?? throw new ArgumentNullException(nameof(adaptationServiceClient));
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
             if (storeConfiguration == null) throw new ArgumentNullException(nameof(storeConfiguration));
+            if (processingConfiguration == null) throw new ArgumentNullException(nameof(processingConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _processingTimeoutDuration = processingConfiguration.ProcessingTimeoutDuration;
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
 
             OriginalStorePath = storeConfiguration.OriginalStorePath;
