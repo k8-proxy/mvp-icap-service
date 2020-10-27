@@ -22,6 +22,10 @@ namespace Glasswall.IcapServer.CloudProxyApp.Setup
             configuration.Bind(queueConfig);
             serviceCollection.AddSingleton<IQueueConfiguration>(queueConfig);
 
+            var storeConfig = new AdaptationStoreConfiguration();
+            configuration.Bind(storeConfig);
+            serviceCollection.AddSingleton<IStoreConfiguration>(storeConfig);
+
             serviceCollection.AddTransient(typeof(IAdaptationServiceClient<>), typeof(RabbitMqClient<>));
             serviceCollection.AddTransient<IResponseProcessor, AdaptationOutcomeProcessor>();
 
