@@ -13,20 +13,25 @@ namespace Glasswall.IcapServer.CloudProxyApp
         private readonly IAppConfiguration _appConfiguration;
         private readonly ILogger<NativeProxyApplication> _logger;
         private readonly CancellationTokenSource _processingCancellationTokenSource;
-        private readonly TimeSpan _processingTimeoutDuration = TimeSpan.FromSeconds(60);
+        private readonly TimeSpan _processingTimeoutDuration;
+        private readonly string OriginalStorePath;
+        private readonly string RebuiltStorePath;
 
         private readonly IAdaptationServiceClient<AdaptationOutcomeProcessor> _adaptationServiceClient;
 
-        readonly string OriginalStorePath = "/var/source";
-        readonly string RebuiltStorePath = "/var/target";
-
-        public NativeProxyApplication(IAdaptationServiceClient<AdaptationOutcomeProcessor> adaptationServiceClient, IAppConfiguration appConfiguration, ILogger<NativeProxyApplication> logger)
+        public NativeProxyApplication(IAdaptationServiceClient<AdaptationOutcomeProcessor> adaptationServiceClient,
+            IAppConfiguration appConfiguration, IStoreConfiguration storeConfiguration, IProcessingConfiguration processingConfiguration, ILogger<NativeProxyApplication> logger)
         {
             _adaptationServiceClient = adaptationServiceClient ?? throw new ArgumentNullException(nameof(adaptationServiceClient));
             _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
+            if (storeConfiguration == null) throw new ArgumentNullException(nameof(storeConfiguration));
+            if (processingConfiguration == null) throw new ArgumentNullException(nameof(processingConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _processingTimeoutDuration = processingConfiguration.ProcessingTimeoutDuration;
             _processingCancellationTokenSource = new CancellationTokenSource(_processingTimeoutDuration);
 
+            OriginalStorePath = storeConfiguration.OriginalStorePath;
+            RebuiltStorePath = storeConfiguration.RebuiltStorePath;
         }
 
         public Task<int> RunAsync()
@@ -36,11 +41,13 @@ namespace Glasswall.IcapServer.CloudProxyApp
             {
                 var processingCancellationToken = _processingCancellationTokenSource.Token;
 
+                _logger.LogInformation($"Using store locations '{OriginalStorePath}' and '{RebuiltStorePath}' for {fileId}");
+
                 var originalStoreFilePath = Path.Combine(OriginalStorePath, fileId.ToString());
                 var rebuiltStoreFilePath = Path.Combine(RebuiltStorePath, fileId.ToString());
 
                 _logger.LogInformation($"Updating 'Original' store for {fileId}");
-                File.Copy(_appConfiguration.InputFilepath, originalStoreFilePath, overwrite:true);
+                File.Copy(_appConfiguration.InputFilepath, originalStoreFilePath, overwrite: true);
 
                 _adaptationServiceClient.Connect();
                 var outcome = _adaptationServiceClient.AdaptationRequest(fileId, originalStoreFilePath, rebuiltStoreFilePath, processingCancellationToken);
@@ -80,7 +87,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, $"Error whilst attempting to clear stores: {ex.Message}");
-            }   
+            }
         }
     }
 }

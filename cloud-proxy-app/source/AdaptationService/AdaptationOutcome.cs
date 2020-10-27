@@ -2,6 +2,6 @@
 {
     enum AdaptationOutcome
     {
-        Replace , Unmodified , Failed
+        Replace, Unmodified, Failed
     }
 }
