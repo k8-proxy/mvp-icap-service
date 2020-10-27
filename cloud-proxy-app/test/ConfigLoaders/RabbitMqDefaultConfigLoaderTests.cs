@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Glasswall.IcapServer.CloudProxyApp.Tests.ConfigLoaders
 {
-    class RabbitMqDefaultConfigLoadersTests
+    class RabbitMqDefaultConfigLoaderTests
     {
         IQueueConfiguration defaultedConfiguration;
 
