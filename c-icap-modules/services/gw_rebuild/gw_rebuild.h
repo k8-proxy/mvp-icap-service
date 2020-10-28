@@ -23,7 +23,6 @@ struct gw_file_types {
 typedef struct gw_rebuild_req_data {
     gw_body_data_t body;
     ci_request_t *req;
-    int must_scanned ;
     int allow204;
     int gw_status;                  /* used to record the Glasswall processing status   */
     int gw_processing;              /* Used to record whether Glasswall processing is required */

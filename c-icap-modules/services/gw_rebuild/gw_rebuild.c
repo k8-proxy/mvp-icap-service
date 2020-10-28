@@ -201,7 +201,6 @@ static void *gw_rebuild_init_request_data(ci_request_t *req)
         data->url_log[0] = '\0';
         data->gw_status = GW_STATUS_UNDEFINED;
         data->gw_processing = GW_PROCESSING_UNDEFINED;
-        data->must_scanned = SCAN;
         if (ALLOW204)
             data->args.enable204 = 1;
         else
