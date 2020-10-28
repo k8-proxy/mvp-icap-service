@@ -36,7 +36,6 @@ static int DATA_CLEANUP = 1;
 #define STATS_BUFFER 1024
 
 static struct ci_magics_db *magic_db = NULL;
-static struct gw_file_types SCAN_FILE_TYPES = {NULL, NULL};
 
 char *PROXY_APP_LOCATION = NULL;
 
@@ -85,7 +84,6 @@ static void gw_rebuild_parse_args(gw_rebuild_req_data_t *data, char *args);
 int cfg_ScanFileTypes(const char *directive, const char **argv, void *setdata);
 
 /*General functions*/
-static int get_filetype(ci_request_t *req, int *encoding);
 static void set_istag(ci_service_xdata_t *srv_xdata);
 static void cmd_reload_istag(const char *name, int type, void *data);
 static int init_body_data(ci_request_t *req);
@@ -96,7 +94,6 @@ static struct ci_conf_entry conf_variables[] = {
     {"Allow204Responses", &ALLOW204, ci_cfg_onoff, NULL},
     {"DataCleanup", &DATA_CLEANUP, ci_cfg_onoff, NULL},
     {"ProxyAppLocation", &PROXY_APP_LOCATION, ci_cfg_set_str, NULL},
-    {"ScanFileTypes", &SCAN_FILE_TYPES, cfg_ScanFileTypes, NULL},      
 };
 
 CI_DECLARE_MOD_DATA ci_service_module_t service = {
@@ -120,7 +117,6 @@ int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
                            struct ci_server_conf *server_conf)
 {   
     magic_db = server_conf->MAGIC_DB;
-    gw_file_types_init(&SCAN_FILE_TYPES);
     
     gw_rebuild_xdata = srv_xdata;
 
@@ -185,7 +181,6 @@ int gw_rebuild_post_init_service(ci_service_xdata_t *srv_xdata,
 void gw_rebuild_close_service()
 {
     ci_debug_printf(3, "gw_rebuild_close_service......\n");
-    gw_file_types_destroy(&SCAN_FILE_TYPES);
     ci_object_pool_unregister(GWREQDATA_POOL);
 }
 
@@ -258,7 +253,7 @@ void gw_rebuild_release_request_data(void *data)
         ci_object_pool_free(data);
      }
 }
-static int must_scanned(ci_request_t *req, char *preview_data, int preview_data_len);
+
 int gw_rebuild_check_preview_handler(char *preview_data, int preview_data_len,
                                     ci_request_t *req)
 {
@@ -293,12 +288,6 @@ int gw_rebuild_check_preview_handler(char *preview_data, int preview_data_len,
     
     if (preview_data_len == 0) {
         return CI_MOD_CONTINUE;
-    }
-    
-    if (must_scanned(req, preview_data, preview_data_len) == NO_SCAN){
-        ci_debug_printf(6, "Not in scan list. Allow it...... \n");
-        ci_stat_uint64_inc(GW_UNPROCESSABLE, 1);         
-        return CI_MOD_ALLOW204;
     }
     
     if (preview_data_len) {
@@ -527,14 +516,6 @@ int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild)
 /*******************************************************************************/
 /* Other  functions                                                            */
 
-int get_filetype(ci_request_t *req, int *iscompressed)
-{
-    int filetype;
-    /*Use the ci_magic_req_data_type which caches the result*/
-    filetype = ci_magic_req_data_type(req, iscompressed);
-    return filetype;
-}
-
 static void cmd_reload_istag(const char *name, int type, void *data)
 {
     if (gw_rebuild_xdata)
@@ -577,44 +558,6 @@ static int init_body_data(ci_request_t *req)
         return CI_ERROR;
 
     return CI_OK;
-}
-
-int must_scanned(ci_request_t *req, char *preview_data, int preview_data_len)
-{
-    int type, i;
-    int *file_groups;
-    const struct gw_file_types *configured_file_types = &SCAN_FILE_TYPES;
-    gw_rebuild_req_data_t *data  = ci_service_data(req);
-    int file_type = get_filetype(req, &data->encoded);
-
-     /*By default do not scan*/
-     type = NO_SCAN;  
-     
-    if (preview_data_len == 0 || file_type < 0) {
-        if (ci_http_request_url(req, data->url_log, LOG_URL_SIZE) <= 0)
-            strcpy(data->url_log, "-");
-
-        ci_debug_printf(1, "WARNING! %s, can not get required info to scan url: %s\n",
-             (preview_data_len == 0? "No preview data" : "Error computing file type"),
-             data->url_log);
-    } else {
-        file_groups = ci_data_type_groups(magic_db, file_type);
-        i = 0;
-        if (file_groups) {
-            while ( i < MAX_GROUPS && file_groups[i] >= 0) {
-                assert(file_groups[i] < ci_magic_groups_num(magic_db));
-                if ((type = configured_file_types->scangroups[file_groups[i]]) > 0)                    
-                    break;
-                i++;
-            }
-        }
-
-        if (type == NO_SCAN) {
-            assert(file_type < ci_magic_types_num(magic_db));
-            type = configured_file_types->scantypes[file_type];
-        }        
-    }
-    return type;
 }
 
 void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req)
