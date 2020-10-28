@@ -10,10 +10,10 @@
 /* Used to initialise gw_status */
 #define GW_STATUS_UNDEFINED 99
 
-enum {NO_DECISION = -1, NO_SCAN=0,SCAN};
+enum {NO_DECISION = -1, NO_SCAN=0, SCAN=1};
 
 /* Used to define the gw_processing content */
-enum {GW_PROCESSING_UNDEFINED = -1, GW_PROCESSING_NONE=0, GW_PROCESSING_SCANNED};
+enum {GW_PROCESSING_UNDEFINED = -1, GW_PROCESSING_NONE=0, GW_PROCESSING_SCANNED=1};
 
 struct gw_file_types {
     int *scantypes;
