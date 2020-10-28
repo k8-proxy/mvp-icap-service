@@ -376,7 +376,6 @@ int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof, ci_re
      return CI_OK;
 }
 static int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* input, ci_simple_file_t* output);
-static int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild);
 int gw_rebuild_end_of_data_handler(ci_request_t *req)
 {
     ci_debug_printf(3, "gw_rebuild_end_of_data_handler\n");
@@ -416,6 +415,13 @@ int gw_rebuild_end_of_data_handler(ci_request_t *req)
         gw_body_data_write(&data->body, data->error_page->buf, error_report_size, 1);
         rebuild_content_length(req, &data->body);
     }
+
+    ci_debug_printf(3, "gw_rebuild_end_of_data_handler allow204(%d)\n", data->allow204);
+    if (data->allow204 && rebuild_status == CI_MOD_ALLOW204)
+    {
+        ci_debug_printf(3, "gw_rebuild_end_of_data_handler returning %d\n", rebuild_status);
+        return CI_MOD_ALLOW204;
+    }
  
     ci_req_unlock_data(req);
     gw_body_data_unlock_all(&data->body);
@@ -424,6 +430,7 @@ int gw_rebuild_end_of_data_handler(ci_request_t *req)
 }
 
 static int call_proxy_application(ci_simple_file_t* input, ci_simple_file_t* output);
+static int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild);
 static int refresh_externally_updated_file(ci_simple_file_t* updated_file);
 /* Return value:  */
 /* CI_OK - to continue to rebuilt content */
