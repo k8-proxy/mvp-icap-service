@@ -35,8 +35,6 @@ static int DATA_CLEANUP = 1;
 #define GW_BT_FILE_PATH_SIZE 150
 #define STATS_BUFFER 1024
 
-static struct ci_magics_db *magic_db = NULL;
-
 char *PROXY_APP_LOCATION = NULL;
 
 char *REBUILD_VERSION = "2.1.1";
@@ -80,8 +78,6 @@ static int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof
 
 /*Arguments parse*/
 static void gw_rebuild_parse_args(gw_rebuild_req_data_t *data, char *args);
-/*Configuration Functions*/
-int cfg_ScanFileTypes(const char *directive, const char **argv, void *setdata);
 
 /*General functions*/
 static void set_istag(ci_service_xdata_t *srv_xdata);
@@ -116,8 +112,6 @@ static char* concat(char* output, const char* s1, const char* s2);
 int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
                            struct ci_server_conf *server_conf)
 {   
-    magic_db = server_conf->MAGIC_DB;
-    
     gw_rebuild_xdata = srv_xdata;
 
     ci_service_set_preview(srv_xdata, 1024);
@@ -590,30 +584,6 @@ void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req)
     data->error_page = error_page;
 }
 
-int gw_file_types_init( struct gw_file_types *ftypes)
-{
-    int i;
-    ftypes->scantypes = (int *) malloc(ci_magic_types_num(magic_db) * sizeof(int));
-    ftypes->scangroups = (int *) malloc(ci_magic_groups_num(magic_db) * sizeof(int));
-
-    if (!ftypes->scantypes || !ftypes->scangroups)
-        return 0;
-
-    for (i = 0; i < ci_magic_types_num(magic_db); i++)
-        ftypes->scantypes[i] = 0;
-    for (i = 0; i < ci_magic_groups_num(magic_db); i++)
-        ftypes->scangroups[i] = 0;
-    return 1;
-}
-
-void gw_file_types_destroy( struct gw_file_types *ftypes)
-{
-    free(ftypes->scantypes);
-    ftypes->scantypes = NULL;
-    free(ftypes->scangroups);
-    ftypes->scangroups = NULL;
-}
-
 /***************************************************************************************/
 /* Parse arguments function -
    Current arguments: allow204=on|off, sizelimit=off
@@ -738,46 +708,6 @@ int refresh_externally_updated_file(ci_simple_file_t* updated_file)
     updated_file->endpos= new_size;
     updated_file->readpos=0;
     return CI_OK;
-}
-
-/****************************************************************************************/
-/*Configuration Functions                                                               */
-
-int cfg_ScanFileTypes(const char *directive, const char **argv, void *setdata)
-{
-     int i, id;
-     int type = NO_SCAN;
-     struct gw_file_types *ftypes = (struct gw_file_types *)setdata;
-     if (!ftypes)
-         return 0;
-
-     if (strcmp(directive, "ScanFileTypes") == 0)
-          type = SCAN;
-     else
-          return 0;
-
-     for (i = 0; argv[i] != NULL; i++) {
-          if ((id = ci_get_data_type_id(magic_db, argv[i])) >= 0)
-               ftypes->scantypes[id] = type;
-          else if ((id = ci_get_data_group_id(magic_db, argv[i])) >= 0)
-               ftypes->scangroups[id] = type;
-          else
-               ci_debug_printf(1, "Unknown data type %s \n", argv[i]);
-
-     }
-
-     ci_debug_printf(2, "scan data for %s scanning of type: ",
-                     (type == 1 ? "simple" : "vir_mode"));
-     for (i = 0; i < ci_magic_types_num(magic_db); i++) {
-          if (ftypes->scantypes[i] == type)
-               ci_debug_printf(2, ",%s", ci_data_type_name(magic_db, i));
-     }
-     for (i = 0; i < ci_magic_groups_num(magic_db); i++) {
-          if (ftypes->scangroups[i] == type)
-               ci_debug_printf(2, ",%s", ci_data_group_name(magic_db, i));
-     }
-     ci_debug_printf(1, "\n");
-     return 1;
 }
 
 /**************************************************************/
