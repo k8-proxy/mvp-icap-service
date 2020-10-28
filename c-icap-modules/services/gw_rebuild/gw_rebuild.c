@@ -109,7 +109,7 @@ CI_DECLARE_MOD_DATA ci_service_module_t service = {
 };
 
 static char* concat(char* output, const char* s1, const char* s2);
-int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
+static int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
                            struct ci_server_conf *server_conf)
 {   
     gw_rebuild_xdata = srv_xdata;
@@ -152,7 +152,7 @@ int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
 }
 
 
-int gw_rebuild_post_init_service(ci_service_xdata_t *srv_xdata,
+static int gw_rebuild_post_init_service(ci_service_xdata_t *srv_xdata,
                            struct ci_server_conf *server_conf)
 {   
     if (!PROXY_APP_LOCATION){
@@ -172,13 +172,13 @@ int gw_rebuild_post_init_service(ci_service_xdata_t *srv_xdata,
     return CI_OK;
 }
 
-void gw_rebuild_close_service()
+static void gw_rebuild_close_service()
 {
     ci_debug_printf(3, "gw_rebuild_close_service......\n");
     ci_object_pool_unregister(GWREQDATA_POOL);
 }
 
-void *gw_rebuild_init_request_data(ci_request_t *req)
+static void *gw_rebuild_init_request_data(ci_request_t *req)
 {
     int preview_size;
     gw_rebuild_req_data_t *data;
@@ -224,7 +224,7 @@ void *gw_rebuild_init_request_data(ci_request_t *req)
     return NULL;
 }
 
-void gw_rebuild_release_request_data(void *data)
+static void gw_rebuild_release_request_data(void *data)
 {
     if (data) {
         ci_debug_printf(3, "Releasing gw_rebuild data.....\n");
@@ -248,7 +248,7 @@ void gw_rebuild_release_request_data(void *data)
      }
 }
 
-int gw_rebuild_check_preview_handler(char *preview_data, int preview_data_len,
+static int gw_rebuild_check_preview_handler(char *preview_data, int preview_data_len,
                                     ci_request_t *req)
 {
      ci_off_t content_size = 0;
@@ -284,12 +284,10 @@ int gw_rebuild_check_preview_handler(char *preview_data, int preview_data_len,
         return CI_MOD_CONTINUE;
     }
     
-    if (preview_data_len) {
-        if (gw_body_data_write(&data->body, preview_data, preview_data_len,
-                                ci_req_hasalldata(req)) == CI_ERROR){
+    if (preview_data_len && 
+        gw_body_data_write(&data->body, preview_data, preview_data_len, ci_req_hasalldata(req)) == CI_ERROR){
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1);                        
             return CI_ERROR;
-        }
     }
     ci_debug_printf(6, "gw_rebuild_check_preview_handler: gw_body_data_write data_len %d\n", preview_data_len);
 
@@ -319,8 +317,6 @@ int gw_rebuild_read_from_net(char *buf, int len, int iseof, ci_request_t *req)
 {
     ci_debug_printf(9, "gw_rebuild_read_from_net; buf len is %d, iseof is %d\n", len, iseof);
 
-     //int ret;
-    // int allow_transfer;
      gw_rebuild_req_data_t *data = ci_service_data(req);
      if (!data)
           return CI_ERROR;
@@ -340,7 +336,7 @@ int gw_rebuild_read_from_net(char *buf, int len, int iseof, ci_request_t *req)
      return gw_body_data_write(&data->body, buf, len, iseof);
 }
 
-int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof, ci_request_t *req)
+static int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof, ci_request_t *req)
 {
     char printBuffer[100];
     char tempBuffer[20];
@@ -360,13 +356,12 @@ int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof, ci_re
     ci_debug_printf(9, "%s", printBuffer);
 
      if (rbuf && rlen) {
-          *rlen = gw_rebuild_read_from_net(rbuf, *rlen, iseof, req);
-      if (*rlen == CI_ERROR)
-           return CI_ERROR;
-          /*else if (*rlen < 0) ignore*/
+        *rlen = gw_rebuild_read_from_net(rbuf, *rlen, iseof, req);
+        if (*rlen == CI_ERROR)
+            return CI_ERROR;
+            /*else if (*rlen < 0) ignore*/
      }
-     else if (iseof) {
-     if (gw_rebuild_read_from_net(NULL, 0, iseof, req) == CI_ERROR)
+     else if (iseof && gw_rebuild_read_from_net(NULL, 0, iseof, req) == CI_ERROR){
          return CI_ERROR;
      }
 
@@ -375,8 +370,9 @@ int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof, ci_re
      }
      return CI_OK;
 }
+
 static int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* input, ci_simple_file_t* output);
-int gw_rebuild_end_of_data_handler(ci_request_t *req)
+static int gw_rebuild_end_of_data_handler(ci_request_t *req)
 {
     ci_debug_printf(3, "gw_rebuild_end_of_data_handler\n");
 
@@ -390,7 +386,7 @@ int gw_rebuild_end_of_data_handler(ci_request_t *req)
 
     int rebuild_status = CI_ERROR;
     if (data->body.type == GW_BT_MEM){
-        /* Create a tempoary file, then tidyup afterwards */
+        /* Create a temporary file, then tidyup afterwards */
         ci_simple_file_t* tmp_input = ci_simple_file_new(gw_body_data_size(&data->body));
         ci_membuf_t* body_data = data->body.store.mem;
 
@@ -404,8 +400,7 @@ int gw_rebuild_end_of_data_handler(ci_request_t *req)
         rebuild_status = rebuild_request_body(req, data, data->body.store.file,data->body.rebuild);
     }
     
-    if (rebuild_status == CI_ERROR)
-    {
+    if (rebuild_status == CI_ERROR){
         int error_report_size;
         generate_error_page(data, req);               
         error_report_size = ci_membuf_size(data->error_page);
@@ -417,8 +412,7 @@ int gw_rebuild_end_of_data_handler(ci_request_t *req)
     }
 
     ci_debug_printf(3, "gw_rebuild_end_of_data_handler allow204(%d)\n", data->allow204);
-    if (data->allow204 && rebuild_status == CI_MOD_ALLOW204)
-    {
+    if (data->allow204 && rebuild_status == CI_MOD_ALLOW204){
         ci_debug_printf(3, "gw_rebuild_end_of_data_handler returning %d\n", rebuild_status);
         return CI_MOD_ALLOW204;
     }
