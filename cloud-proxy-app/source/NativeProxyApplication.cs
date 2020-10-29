@@ -36,6 +36,8 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
         public Task<int> RunAsync()
         {
+            string originalStoreFilePath = string.Empty;
+            string rebuiltStoreFilePath = string.Empty;
             var fileId = Guid.NewGuid();
             try
             {
@@ -43,8 +45,8 @@ namespace Glasswall.IcapServer.CloudProxyApp
 
                 _logger.LogInformation($"Using store locations '{OriginalStorePath}' and '{RebuiltStorePath}' for {fileId}");
 
-                var originalStoreFilePath = Path.Combine(OriginalStorePath, fileId.ToString());
-                var rebuiltStoreFilePath = Path.Combine(RebuiltStorePath, fileId.ToString());
+                originalStoreFilePath = Path.Combine(OriginalStorePath, fileId.ToString());
+                rebuiltStoreFilePath = Path.Combine(RebuiltStorePath, fileId.ToString());
 
                 _logger.LogInformation($"Updating 'Original' store for {fileId}");
                 File.Copy(_appConfiguration.InputFilepath, originalStoreFilePath, overwrite: true);
@@ -66,11 +68,13 @@ namespace Glasswall.IcapServer.CloudProxyApp
             catch (OperationCanceledException oce)
             {
                 _logger.LogError(oce, $"Error Processing Timeout 'input' {fileId} exceeded {_processingTimeoutDuration.TotalSeconds}s");
+                ClearStores(originalStoreFilePath, rebuiltStoreFilePath);
                 return Task.FromResult((int)ReturnOutcome.GW_ERROR);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error Processing 'input' {fileId}");
+                ClearStores(originalStoreFilePath, rebuiltStoreFilePath);
                 return Task.FromResult((int)ReturnOutcome.GW_ERROR);
             }
         }
@@ -80,8 +84,10 @@ namespace Glasswall.IcapServer.CloudProxyApp
             try
             {
                 _logger.LogInformation($"Clearing stores '{originalStoreFilePath}' and {rebuiltStoreFilePath}");
-                File.Delete(originalStoreFilePath);
-                File.Delete(rebuiltStoreFilePath);
+                if (!string.IsNullOrEmpty(originalStoreFilePath))
+                    File.Delete(originalStoreFilePath);
+                if (!string.IsNullOrEmpty(rebuiltStoreFilePath))
+                    File.Delete(rebuiltStoreFilePath);
             }
 
             catch (Exception ex)
