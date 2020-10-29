@@ -10,10 +10,10 @@
 /* Used to initialise gw_status */
 #define GW_STATUS_UNDEFINED 99
 
-enum {NO_DECISION = -1, NO_SCAN=0,SCAN};
+enum {NO_DECISION = -1, NO_SCAN=0, SCAN=1};
 
 /* Used to define the gw_processing content */
-enum {GW_PROCESSING_UNDEFINED = -1, GW_PROCESSING_NONE=0, GW_PROCESSING_SCANNED};
+enum {GW_PROCESSING_UNDEFINED = -1, GW_PROCESSING_NONE=0, GW_PROCESSING_SCANNED=1};
 
 struct gw_file_types {
     int *scantypes;
@@ -23,7 +23,6 @@ struct gw_file_types {
 typedef struct gw_rebuild_req_data {
     gw_body_data_t body;
     ci_request_t *req;
-    int must_scanned ;
     int allow204;
     int gw_status;                  /* used to record the Glasswall processing status   */
     int gw_processing;              /* Used to record whether Glasswall processing is required */

@@ -201,7 +201,6 @@ static void *gw_rebuild_init_request_data(ci_request_t *req)
         data->url_log[0] = '\0';
         data->gw_status = GW_STATUS_UNDEFINED;
         data->gw_processing = GW_PROCESSING_UNDEFINED;
-        data->must_scanned = SCAN;
         if (ALLOW204)
             data->args.enable204 = 1;
         else
@@ -235,10 +234,7 @@ static void gw_rebuild_release_request_data(void *data)
         }
         else
         {
-            if (requestData->body.type == GW_BT_MEM)
-                gw_body_data_destroy(&requestData->body);
-            else
-                ci_debug_printf(3, "Leaving gw_rebuild data body.....\n");
+            ci_debug_printf(3, "Leaving gw_rebuild data body.....\n");
         }
 
         if (((gw_rebuild_req_data_t *) data)->error_page)
@@ -303,10 +299,7 @@ int gw_rebuild_write_to_net(char *buf, int len, ci_request_t *req)
     if (!data)
         return CI_ERROR;
 
-    if(data->body.type != GW_BT_NONE)
-        bytes = gw_body_data_read(&data->body, buf, len);
-    else
-        bytes =0;
+    bytes = gw_body_data_read(&data->body, buf, len);
 
     ci_debug_printf(9, "gw_rebuild_write_to_net; write bytes is %d\n", bytes);
 
@@ -317,23 +310,20 @@ int gw_rebuild_read_from_net(char *buf, int len, int iseof, ci_request_t *req)
 {
     ci_debug_printf(9, "gw_rebuild_read_from_net; buf len is %d, iseof is %d\n", len, iseof);
 
-     gw_rebuild_req_data_t *data = ci_service_data(req);
-     if (!data)
-          return CI_ERROR;
-
-     if (data->body.type == GW_BT_NONE) /*No body data? consume all content*/
-        return len;
-
-     if (data->args.sizelimit
-         && gw_body_data_size(&data->body) >= data->max_object_size) {
-         ci_debug_printf(2, "Object bigger than max scanable file. \n");
-
-        /*TODO: Raise an error report rather than just raise an error */
+    gw_rebuild_req_data_t *data = ci_service_data(req);
+    if (!data)
         return CI_ERROR;
-     } 
-     ci_debug_printf(9, "gw_rebuild_read_from_net:Writing to data->body, %d bytes \n", len);
 
-     return gw_body_data_write(&data->body, buf, len, iseof);
+    if (data->args.sizelimit
+        && gw_body_data_size(&data->body) >= data->max_object_size) {
+        ci_debug_printf(2, "Object bigger than max scanable file. \n");
+
+    /*TODO: Raise an error report rather than just raise an error */
+    return CI_ERROR;
+    } 
+    ci_debug_printf(9, "gw_rebuild_read_from_net:Writing to data->body, %d bytes \n", len);
+
+    return gw_body_data_write(&data->body, buf, len, iseof);
 }
 
 static int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof, ci_request_t *req)
@@ -378,27 +368,14 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
 
     gw_rebuild_req_data_t *data = ci_service_data(req);
 
-    if (!data || data->body.type == GW_BT_NONE){
+    if (!data){
         data->gw_processing = GW_PROCESSING_NONE;
         ci_stat_uint64_inc(GW_UNPROCESSABLE, 1);                 
         return CI_MOD_DONE;
     }
 
     int rebuild_status = CI_ERROR;
-    if (data->body.type == GW_BT_MEM){
-        /* Create a temporary file, then tidyup afterwards */
-        ci_simple_file_t* tmp_input = ci_simple_file_new(gw_body_data_size(&data->body));
-        ci_membuf_t* body_data = data->body.store.mem;
-
-        ci_simple_file_write(tmp_input, body_data->buf, ci_membuf_size(body_data), 1);
-        
-        rebuild_status = rebuild_request_body(req, data, tmp_input, data->body.rebuild);
-
-        ci_simple_file_destroy(tmp_input);
-        
-    } else {
-        rebuild_status = rebuild_request_body(req, data, data->body.store.file,data->body.rebuild);
-    }
+    rebuild_status = rebuild_request_body(req, data, data->body.store, data->body.rebuild);
     
     if (rebuild_status == CI_ERROR){
         int error_report_size;
@@ -406,7 +383,7 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
         error_report_size = ci_membuf_size(data->error_page);
    
         gw_body_data_destroy(&data->body);
-        gw_body_data_new(&data->body, GW_BT_MEM, error_report_size);
+        gw_body_data_new(&data->body, error_report_size);
         gw_body_data_write(&data->body, data->error_page->buf, error_report_size, 1);
         rebuild_content_length(req, &data->body);
     }
@@ -495,17 +472,9 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
 
 int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild)
 {
-    if (data->body.type == GW_BT_FILE){
-        ci_simple_file_destroy(data->body.store.file);
-        data->body.store.file = rebuild;        
-        return CI_OK;
-    } else if (data->body.type == GW_BT_MEM){
-        ci_membuf_free(data->body.store.mem);
-        data->body.store.mem = ci_simple_file_to_membuf(rebuild, CI_MEMBUF_CONST | CI_MEMBUF_RO | CI_MEMBUF_NULL_TERMINATED);
-        return (data->body.store.mem == NULL)?CI_ERROR:CI_OK;
-    }
-    
-    return CI_ERROR;
+    ci_simple_file_destroy(data->body.store);
+    data->body.store = rebuild;        
+    return CI_OK;
 }
 
 /*******************************************************************************/
@@ -529,17 +498,10 @@ void set_istag(ci_service_xdata_t *srv_xdata)
 
 static int init_body_data(ci_request_t *req)
 {
-    int scan_from_mem;
     gw_rebuild_req_data_t *data = ci_service_data(req);
     assert(data);
 
-    scan_from_mem = 1;
-
-    if (scan_from_mem &&
-        data->expected_size > 0 && data->expected_size < CI_BODY_MAX_MEM)
-        gw_body_data_new(&(data->body), GW_BT_MEM, data->expected_size);
-    else
-        gw_body_data_new(&(data->body), GW_BT_FILE, data->args.sizelimit==0 ? 0 : data->max_object_size);
+    gw_body_data_new(&(data->body), data->args.sizelimit==0 ? 0 : data->max_object_size);
         /*Icap server can not send data at the begining.
         The following call does not needed because the c-icap
         does not send any data if the ci_req_unlock_data is not called:*/
@@ -548,9 +510,6 @@ static int init_body_data(ci_request_t *req)
         /* Let ci_simple_file api to control the percentage of data.
          For now no data can send */
     gw_body_data_lock_all(&(data->body));
-
-    if (data->body.type == GW_BT_NONE)           /*Memory allocation or something else ..... */
-        return CI_ERROR;
 
     return CI_OK;
 }
@@ -657,19 +616,10 @@ void rebuild_content_length(ci_request_t *req, gw_body_data_t *bd)
     ci_off_t new_file_size = 0;
     char buf[256];
     ci_simple_file_t *body = NULL;
-    ci_membuf_t *memBuf = NULL;
 
-    if (bd->type == GW_BT_FILE) {
-        body = bd->store.file;
-        assert(body->readpos == 0);
-        new_file_size = body->endpos;
-    }
-    else if (bd->type == GW_BT_MEM) {
-        memBuf = bd->store.mem;
-        new_file_size = memBuf->endpos;
-    }
-    else /*do nothing....*/
-        return;
+    body = bd->store;
+    assert(body->readpos == 0);
+    new_file_size = body->endpos;
 
     ci_debug_printf(5, "Body data size changed to new size %"  PRINTF_OFF_T "\n",
                     (CAST_OFF_T)new_file_size);
