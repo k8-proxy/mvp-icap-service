@@ -19,7 +19,7 @@ jobs:
             submodules: true
 
         - name: build c-icap
-          run: cd c-icap &&  autoreconf -i -f && ./configure --prefix=/usr/local/c-icap && /opt/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir build_wrapper_output_directory make install
+          run: cd c-icap &&  autoreconf -i && ./configure --prefix=/usr/local/c-icap && /opt/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir build_wrapper_output_directory make install
 
         - name: build c-icap-modules
           run: cd c-icap-modules &&  autoreconf -i -f &&  ./configure --with-c-icap=/usr/local/c-icap --prefix=/usr/local/c-icap && /opt/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir build_wrapper_output_directory make install
