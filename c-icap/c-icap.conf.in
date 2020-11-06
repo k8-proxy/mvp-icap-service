@@ -183,8 +183,10 @@ Port 1344
 #		"!SSL_OP_ALL" as first flag:
 #			tls-options=!SSL_OP_ALL:SSL_OP_NO_TICKET
 #		
+# Example:
+#   TlsPort 1345 tls-method=TLSv1_2 cert=@prefix@/cert/certificate.pem key=@prefix@/cert/key.pem
 # Default:
-#       None
+#   None
 
 # TAG: TlsPassphrase
 # Format: TlsPassphrase /path/to/script
