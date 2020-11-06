@@ -53,4 +53,5 @@ COPY --from=build /run/c-icap /run/c-icap
 COPY --from=dotnet-builder /src/cloud-proxy-app/source/bin/Release/netcoreapp3.1/publish /usr/local/bin
 
 EXPOSE 1344
+EXPOSE 1345
 CMD ["/usr/local/c-icap/bin/c-icap","-N","-D"]
