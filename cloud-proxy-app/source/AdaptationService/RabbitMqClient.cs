@@ -11,13 +11,13 @@ using System.Threading;
 
 namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 {
-    public class RabbitMqClient<TResponseProcessor> : IAdaptationServiceClient<TResponseProcessor> where TResponseProcessor : IResponseProcessor
+    public class RabbitMqClient<TResponseProcessor> : IDisposable, IAdaptationServiceClient<TResponseProcessor> where TResponseProcessor : IResponseProcessor
     {
         private readonly IConnectionFactory connectionFactory;
         private IConnection _connection;
         private IModel _channel;
         private EventingBasicConsumer _consumer;
-
+        private bool disposedValue;
         private readonly BlockingCollection<ReturnOutcome> _respQueue = new BlockingCollection<ReturnOutcome>();
         private readonly IResponseProcessor _responseProcessor;
         private readonly IQueueConfiguration _queueConfiguration;
@@ -106,6 +106,28 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
                                  body: body);
 
             return _respQueue.Take(processingCancellationToken);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _channel?.Dispose();
+                    _connection?.Dispose();
+                    _respQueue?.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
