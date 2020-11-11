@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Glasswall.IcapServer.CloudProxyApp
 {
-    public class NativeProxyApplication
+    public class NativeProxyApplication : IDisposable
     {
         private readonly IAppConfiguration _appConfiguration;
         private readonly ILogger<NativeProxyApplication> _logger;
@@ -18,6 +18,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
         private readonly string RebuiltStorePath;
 
         private readonly IAdaptationServiceClient<AdaptationOutcomeProcessor> _adaptationServiceClient;
+        private bool disposedValue;
 
         public NativeProxyApplication(IAdaptationServiceClient<AdaptationOutcomeProcessor> adaptationServiceClient,
             IAppConfiguration appConfiguration, IStoreConfiguration storeConfiguration, IProcessingConfiguration processingConfiguration, ILogger<NativeProxyApplication> logger)
@@ -94,6 +95,26 @@ namespace Glasswall.IcapServer.CloudProxyApp
             {
                 _logger.LogWarning(ex, $"Error whilst attempting to clear stores: {ex.Message}");
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _adaptationServiceClient?.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

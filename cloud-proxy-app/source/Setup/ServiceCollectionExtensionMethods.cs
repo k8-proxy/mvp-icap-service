@@ -13,7 +13,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Setup
         {
             serviceCollection.AddLogging(configure => configure.AddConsole());
 
-            serviceCollection.AddSingleton<NativeProxyApplication>();
+            serviceCollection.AddTransient<NativeProxyApplication>();
 
             var appConfig = new CloudProxyApplicationConfiguration();
             configuration.Bind(appConfig);
