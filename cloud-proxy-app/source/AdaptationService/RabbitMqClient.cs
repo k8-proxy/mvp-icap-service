@@ -11,7 +11,7 @@ using System.Threading;
 
 namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 {
-    public class RabbitMqClient<TResponseProcessor> : IDisposable, IAdaptationServiceClient<TResponseProcessor> where TResponseProcessor : IResponseProcessor
+    public class RabbitMqClient<TResponseProcessor> : IAdaptationServiceClient<TResponseProcessor> where TResponseProcessor : IResponseProcessor
     {
         private readonly IConnectionFactory connectionFactory;
         private IConnection _connection;

@@ -21,7 +21,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
         }
 
         [Test]
-        public void NativeProxyApplication_is_added_as_singleton()
+        public void NativeProxyApplication_is_added_as_transient()
         {
             // Arrange
             IConfiguration configuration = _configurationBuilder.Build();
@@ -33,7 +33,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.Tests.Setup
 
             // Assert
             Assert.That(nativeProxyApplication, Is.Not.Null, "expected the object to be available");
-            Assert.AreSame(nativeProxyApplication, secondNativeProxyApplication, "expected the same object to be provided");
+            Assert.AreNotSame(nativeProxyApplication, secondNativeProxyApplication, "expected the same object to be provided");
         }
 
         [Test]
