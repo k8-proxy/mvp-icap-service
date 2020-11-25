@@ -14,6 +14,7 @@
 #include "c_icap/stats.h"
 #include "gw_rebuild.h"
 #include "gw_proxy_api.h"
+#include "gw_guid.h"
 
 #include "md5.h"
 #include "common.h"
@@ -217,6 +218,10 @@ static void *gw_rebuild_init_request_data(ci_request_t *req)
         else
             data->allow204 = 0;
         data->req = req;
+        
+        generate_random_guid(data->file_id);
+        
+        ci_debug_printf(3, "gw_rebuild_init_request_data:FileId:%s\n", data->file_id);
 
         return data;
     }
@@ -226,15 +231,16 @@ static void *gw_rebuild_init_request_data(ci_request_t *req)
 static void gw_rebuild_release_request_data(void *data)
 {
     if (data) {
-        ci_debug_printf(3, "Releasing gw_rebuild data.....\n");
+
         gw_rebuild_req_data_t *requestData = (gw_rebuild_req_data_t *) data;
+        ci_debug_printf(3, "Releasing gw_rebuild data:FileId:%s\n", requestData->file_id);
         if (DATA_CLEANUP)
         {            
             gw_body_data_destroy(&requestData->body);
         }
         else
         {
-            ci_debug_printf(3, "Leaving gw_rebuild data body.....\n");
+            ci_debug_printf(3, "Leaving gw_rebuild data body:FileId:%s\n", requestData->file_id);
         }
 
         if (((gw_rebuild_req_data_t *) data)->error_page)
@@ -251,10 +257,10 @@ static int gw_rebuild_check_preview_handler(char *preview_data, int preview_data
 
      gw_rebuild_req_data_t *data = ci_service_data(req);
 
-     ci_debug_printf(3, "gw_rebuild_check_preview_handler; preview data size is %d\n", preview_data_len);
+     ci_debug_printf(3, "gw_rebuild_check_preview_handler:FileId:%s, preview data size is %d\n", data->file_id, preview_data_len);
 
      if (!data || !ci_req_hasbody(req)){
-        ci_debug_printf(6, "No body data, allow 204\n");
+        ci_debug_printf(6, "No body data, allow 204:FileId:%s\n", data->file_id);
         ci_stat_uint64_inc(GW_UNPROCESSABLE, 1); 
         return CI_MOD_ALLOW204;
      }
@@ -264,11 +270,11 @@ static int gw_rebuild_check_preview_handler(char *preview_data, int preview_data
     /*Compute the expected size, will be used by must_scanned*/
     content_size = ci_http_content_length(req);
     data->expected_size = content_size;
-    ci_debug_printf(6, "gw_rebuild_check_preview_handler: expected_size is %ld\n", content_size);
+    ci_debug_printf(6, "gw_rebuild_check_preview_handler:FileId:%s, expected_size is %ld\n", data->file_id, content_size);
 
     /*log objects url*/
     if (!ci_http_request_url(req, data->url_log, LOG_URL_SIZE)) {
-        ci_debug_printf(2, "Failed to retrieve HTTP request URL\n");
+        ci_debug_printf(2, "Failed to retrieve HTTP request URL:FileId:%s\n", data->file_id);
     }
 
     if (init_body_data(req) == CI_ERROR){
@@ -285,43 +291,41 @@ static int gw_rebuild_check_preview_handler(char *preview_data, int preview_data
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1);                        
             return CI_ERROR;
     }
-    ci_debug_printf(6, "gw_rebuild_check_preview_handler: gw_body_data_write data_len %d\n", preview_data_len);
+    ci_debug_printf(6, "gw_rebuild_check_preview_handler:FileId:%s, gw_body_data_write data_len %d\n", data->file_id, preview_data_len);
 
     return CI_MOD_CONTINUE;
 }
 
 int gw_rebuild_write_to_net(char *buf, int len, ci_request_t *req)
 {
-    ci_debug_printf(9, "gw_rebuild_write_to_net; buf len is %d\n", len);
-
     int bytes;
     gw_rebuild_req_data_t *data = ci_service_data(req);
+     ci_debug_printf(9, "gw_rebuild_write_to_net:FileId:%s, buf len is %d\n", data->file_id, len);
     if (!data)
         return CI_ERROR;
 
     bytes = gw_body_data_read(&data->body, buf, len);
 
-    ci_debug_printf(9, "gw_rebuild_write_to_net; write bytes is %d\n", bytes);
+    ci_debug_printf(9, "gw_rebuild_write_to_net:FileId:%s, write bytes is %d\n", data->file_id, bytes);
 
     return bytes;
 }
 
 int gw_rebuild_read_from_net(char *buf, int len, int iseof, ci_request_t *req)
 {
-    ci_debug_printf(9, "gw_rebuild_read_from_net; buf len is %d, iseof is %d\n", len, iseof);
-
     gw_rebuild_req_data_t *data = ci_service_data(req);
+    ci_debug_printf(9, "gw_rebuild_read_from_net:FileId:%s, buf len is %d, iseof is %d\n", data->file_id, len, iseof);
     if (!data)
         return CI_ERROR;
 
     if (data->args.sizelimit
         && gw_body_data_size(&data->body) >= data->max_object_size) {
-        ci_debug_printf(2, "Object bigger than max scanable file. \n");
+        ci_debug_printf(2, "Object bigger than max scanable file:FileId:%s\n", data->file_id);
 
     /*TODO: Raise an error report rather than just raise an error */
     return CI_ERROR;
     } 
-    ci_debug_printf(9, "gw_rebuild_read_from_net:Writing to data->body, %d bytes \n", len);
+    ci_debug_printf(9, "gw_rebuild_read_from_net:FileId:%s, Writing to data->body, %d bytes \n", data->file_id, len);
 
     return gw_body_data_write(&data->body, buf, len, iseof);
 }
@@ -364,10 +368,9 @@ static int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof
 static int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* input, ci_simple_file_t* output);
 static int gw_rebuild_end_of_data_handler(ci_request_t *req)
 {
-    ci_debug_printf(3, "gw_rebuild_end_of_data_handler\n");
-
     gw_rebuild_req_data_t *data = ci_service_data(req);
-
+    ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s\n", data->file_id);
+    
     if (!data){
         data->gw_processing = GW_PROCESSING_NONE;
         ci_stat_uint64_inc(GW_UNPROCESSABLE, 1);                 
@@ -388,9 +391,9 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
         rebuild_content_length(req, &data->body);
     }
 
-    ci_debug_printf(3, "gw_rebuild_end_of_data_handler allow204(%d)\n", data->allow204);
+    ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s, allow204(%d)\n", data->file_id, data->allow204);
     if (data->allow204 && rebuild_status == CI_MOD_ALLOW204){
-        ci_debug_printf(3, "gw_rebuild_end_of_data_handler returning %d\n", rebuild_status);
+        ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s, returning %d\n",  data->file_id, rebuild_status);
         return CI_MOD_ALLOW204;
     }
  
@@ -420,38 +423,38 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     switch (gw_proxy_api_return)
     {
         case GW_FAILED:
-            ci_debug_printf(3, "rebuild_request_body GW_FAILED\n");
+            ci_debug_printf(3, "rebuild_request_body GW_FAILED:FileId:%s\n", data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
             ci_status = CI_ERROR;
             break;
         case GW_ERROR:
-            ci_debug_printf(3, "rebuild_request_body GW_ERROR\n");
+            ci_debug_printf(3, "rebuild_request_body GW_ERROR:FileId:%s\n", data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
             ci_status = CI_ERROR;
             break;
         case GW_UNPROCESSED:
-            ci_debug_printf(3, "rebuild_request_body GW_UNPROCESSED\n");
+            ci_debug_printf(3, "rebuild_request_body GW_UNPROCESSED:FileId:%s\n", data->file_id);
             ci_stat_uint64_inc(GW_NOT_PROCESSED, 1); 
             ci_status = CI_MOD_ALLOW204;
             break;
         case GW_REBUILT:
             {
-                ci_debug_printf(3, "rebuild_request_body GW_REBUILT\n");
+                ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
                 
                 if (refresh_externally_updated_file(output) == CI_ERROR){
-                    ci_debug_printf(3, "Problem sizing Rebuild\n");
+                    ci_debug_printf(3, "Problem sizing Rebuild:FileId:%s\n", data->file_id);
                     ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
                     ci_status = CI_ERROR;
                     break;
                 } 
                 if (ci_simple_file_size(output) == 0){
-                    ci_debug_printf(3, "No Rebuilt document available\n");
+                    ci_debug_printf(3, "No Rebuilt document available:FileId:%s\n", data->file_id);
                     ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
                     ci_status =  CI_ERROR;
                     break;
                 }
                 if (!replace_request_body(data, output)){
-                    ci_debug_printf(3, "Error replacing request body\n");
+                    ci_debug_printf(3, "Error replacing request body:FileId:%s\n", data->file_id);
                     ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
                     ci_status =  CI_ERROR;
                     break;
@@ -463,7 +466,7 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
             }
         
         default:
-            ci_debug_printf(3, "Unrecognised Proxy API return value (%d)\n", gw_proxy_api_return);
+            ci_debug_printf(3, "Unrecognised Proxy API return value (%d):FileId:%s\n", gw_proxy_api_return, data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
             ci_status =  CI_ERROR;        
     }

@@ -10,6 +10,9 @@
 /* Used to initialise gw_status */
 #define GW_STATUS_UNDEFINED 99
 
+/* Used to allocate space for storing the file id */
+#define FILE_ID_SIZE 40
+
 enum {NO_DECISION = -1, NO_SCAN=0, SCAN=1};
 
 /* Used to define the gw_processing content */
@@ -36,6 +39,7 @@ typedef struct gw_rebuild_req_data {
     } args;
     ci_off_t max_object_size;
     int encoded;
+	unsigned char file_id[FILE_ID_SIZE];
 } gw_rebuild_req_data_t;
 
 /*File types related functions*/
