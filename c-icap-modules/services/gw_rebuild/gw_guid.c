@@ -3,13 +3,12 @@
 #include <time.h>
 
 const char *szTemp = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
-const char *szHex = "0123456789ABCDEF-";
+const char *szHex = "0123456789abcdef-";
 
 void generate_random_guid(unsigned char guid[40])
 {
   srand (clock());
   int t = 0;
-
 
   int nLen = strlen (szTemp);
 
@@ -25,7 +24,6 @@ void generate_random_guid(unsigned char guid[40])
       case '4' : { c = '4'; } break;
     }
 
-    guid[t] = ( t < nLen ) ? c : 0x00;
-    
+    guid[t] = ( t < nLen ) ? c : 0x00;    
   }
 }
