@@ -8,7 +8,7 @@ CONFS = gw_rebuild.conf
 
 gw_rebuild_la_LDFLAGS = -module -avoid-version
 gw_rebuild_la_CFLAGS =
-gw_rebuild_la_SOURCES = gw_rebuild.c gw_body.c
+gw_rebuild_la_SOURCES = gw_rebuild.c gw_body.c gw_guid.c
 
 TMPLS = templates/en/POLICY_ISSUE templates/en-US/POLICY_ISSUE
 
