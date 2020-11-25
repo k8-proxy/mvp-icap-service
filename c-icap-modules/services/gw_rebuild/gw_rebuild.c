@@ -421,7 +421,7 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
     return CI_MOD_DONE;
 }
 
-static int call_proxy_application(ci_simple_file_t* input, ci_simple_file_t* output);
+static int call_proxy_application(unsigned char* file_id, ci_simple_file_t* input, ci_simple_file_t* output);
 static int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild);
 static int refresh_externally_updated_file(ci_simple_file_t* updated_file);
 /* Return value:  */
@@ -432,7 +432,7 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
 {
     ci_stat_uint64_inc(GW_SCAN_REQS, 1);    
     ci_stat_kbs_inc(GW_SCAN_BYTES, (int)gw_body_data_size(&data->body));
-    int gw_proxy_api_return = call_proxy_application(input, output);
+    int gw_proxy_api_return = call_proxy_application(data->file_id, input, output);
     
     /* Store the return status for inclusion in any error report */
     data->gw_status = gw_proxy_api_return;
@@ -588,9 +588,10 @@ void gw_rebuild_parse_args(gw_rebuild_req_data_t *data, char *args)
 
 static int exec_prog(const char **argv);
 /* Return value: exit status from executed application (gw_proxy_api_return), or GW_ERROR */
-int call_proxy_application(ci_simple_file_t* input, ci_simple_file_t* output)
+int call_proxy_application(unsigned char* file_id, ci_simple_file_t* input, ci_simple_file_t* output)
 {     
-    const char* args[6] = {PROXY_APP_LOCATION, 
+    const char* args[8] = {PROXY_APP_LOCATION, 
+                           "-f", file_id,
                            "-i", input->filename, 
                            "-o", output->filename, 
                            NULL};

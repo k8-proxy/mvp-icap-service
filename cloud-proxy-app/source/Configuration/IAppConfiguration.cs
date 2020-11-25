@@ -2,6 +2,7 @@
 {
     public interface IAppConfiguration
     {
+        string FileId { get; }
         string InputFilepath { get; }
         string OutputFilepath { get; }
     }
