@@ -15,6 +15,7 @@
 #include "gw_rebuild.h"
 #include "gw_proxy_api.h"
 #include "gw_guid.h"
+#include "gw_env_var.h"
 
 #include "md5.h"
 #include "common.h"
@@ -32,6 +33,8 @@ static int file_exists (char *filename);
 static int ALLOW204 = 1;
 static ci_off_t MAX_OBJECT_SIZE = 5*1024*1024;
 static int DATA_CLEANUP = 1;
+static const int GW_ENABLE_FILE_ID_REPORTING  = 1;
+static const int GW_DISABLE_FILE_ID_REPORTING = 0;
 #define GW_VERSION_SIZE 15
 #define GW_BT_FILE_PATH_SIZE 150
 #define STATS_BUFFER 1024
@@ -63,6 +66,9 @@ struct ci_fmt_entry gw_rebuild_report_format_table [] = {
 static ci_service_xdata_t *gw_rebuild_xdata = NULL;
 
 static int GWREQDATA_POOL = -1;
+
+static char *ENABLE_FILE_ID_REPORTING_VARIABLE = "EnableFileId";
+static int REPORT_FILE_ID;
 
 static int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
                            struct ci_server_conf *server_conf);
@@ -123,7 +129,7 @@ static int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
     GWREQDATA_POOL = ci_object_pool_register("gw_rebuild_req_data_t", sizeof(gw_rebuild_req_data_t));
 
     if(GWREQDATA_POOL < 0) {
-        ci_debug_printf(1, " gw_rebuild_init_service: error registering object_pool gw_rebuild_req_data_t\n");
+        ci_debug_printf(1, "gw_rebuild_init_service: error registering object_pool gw_rebuild_req_data_t\n");
         return CI_ERROR;
     }
 
@@ -147,8 +153,14 @@ static int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
     snprintf(buf, STATS_BUFFER-1, template_buf, "UNPROCESSED");
     GW_NOT_PROCESSED = ci_stat_entry_register(buf, STAT_INT64_T, stats_label);
     snprintf(buf, STATS_BUFFER-1, template_buf, "UNPROCESSABLE");
-    GW_UNPROCESSABLE = ci_stat_entry_register(buf, STAT_INT64_T, stats_label);      
-        
+    GW_UNPROCESSABLE = ci_stat_entry_register(buf, STAT_INT64_T, stats_label);   
+
+    int set_result;
+    set_result = set_from_environment_variable_bool(ENABLE_FILE_ID_REPORTING_VARIABLE, &REPORT_FILE_ID, GW_DISABLE_FILE_ID_REPORTING);
+    if (set_result == 0)
+        ci_debug_printf(5, "gw_rebuild_init_service: File Id Reporting set to default value\n");    
+
+    ci_debug_printf(5, "gw_rebuild_init_service: File Id Reporting = %s\n", REPORT_FILE_ID == 1 ? "true" : "false");    
     return CI_OK;
 }
 
@@ -220,6 +232,7 @@ static void *gw_rebuild_init_request_data(ci_request_t *req)
         data->req = req;
         
         generate_random_guid(data->file_id);
+        
         
         ci_debug_printf(3, "gw_rebuild_init_request_data:FileId:%s\n", data->file_id);
 
