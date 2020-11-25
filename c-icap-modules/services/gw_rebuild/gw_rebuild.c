@@ -379,6 +379,7 @@ static int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof
 }
 
 static int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* input, ci_simple_file_t* output);
+static void add_file_id_header(ci_request_t *req, const char* header_key, unsigned char* file_id);
 static int gw_rebuild_end_of_data_handler(ci_request_t *req)
 {
     gw_rebuild_req_data_t *data = ci_service_data(req);
@@ -402,6 +403,10 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
         gw_body_data_new(&data->body, error_report_size);
         gw_body_data_write(&data->body, data->error_page->buf, error_report_size, 1);
         rebuild_content_length(req, &data->body);
+    }
+    
+    if (REPORT_FILE_ID == GW_ENABLE_FILE_ID_REPORTING){
+      add_file_id_header(req, "X-Adaptation-File-Id", data->file_id);
     }
 
     ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s, allow204(%d)\n", data->file_id, data->allow204);
@@ -663,7 +668,7 @@ static int file_size(int fd)
    return(s.st_size);
 }
 
-int refresh_externally_updated_file(ci_simple_file_t* updated_file)
+static int refresh_externally_updated_file(ci_simple_file_t* updated_file)
 {
     ci_off_t new_size;
     ci_simple_file_write(updated_file, NULL, 0, 1);  /* to close of the file have been modified externally */
@@ -675,6 +680,20 @@ int refresh_externally_updated_file(ci_simple_file_t* updated_file)
     updated_file->endpos= new_size;
     updated_file->readpos=0;
     return CI_OK;
+}
+
+static void add_file_id_header(ci_request_t *req, const char* header_key, unsigned char* file_id)
+{
+  char buf[256];
+  snprintf(buf, sizeof(buf), "%s: %s", header_key, file_id);
+  if (req->type == ICAP_REQMOD){
+    ci_http_request_add_header(req, buf);
+    ci_debug_printf(5, "Request Header updated, %s\n", buf);        
+  }
+  else if (req->type == ICAP_RESPMOD){
+     ci_http_response_add_header(req, buf);
+     ci_debug_printf(5, "Response Header updated, %s\n", buf);        
+  }
 }
 
 /**************************************************************/
