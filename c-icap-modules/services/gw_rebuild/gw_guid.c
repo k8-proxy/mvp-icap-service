@@ -8,11 +8,10 @@ const char *szHex = "0123456789abcdef-";
 void generate_random_guid(unsigned char guid[40])
 {
   srand (clock());
-  int t = 0;
 
   int nLen = strlen (szTemp);
 
-  for (t=0; t<nLen+1; t++){
+  for (int t=0; t<nLen+1; t++){
     int r = rand () % 16;
     char c = ' ';   
 
