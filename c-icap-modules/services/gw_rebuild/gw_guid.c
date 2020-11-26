@@ -17,10 +17,20 @@ void generate_random_guid(unsigned char guid[40])
 
     switch (szTemp[t])
     {
-      case 'x' : { c = szHex [r]; } break;
-      case 'y' : { c = szHex [(r & 0x03) | 0x08]; } break;
-      case '-' : { c = '-'; } break;
-      case '4' : { c = '4'; } break;
+      case 'x' : 
+        c = szHex [r]; 
+        break;
+      case 'y' : 
+        c = szHex [(r & 0x03) | 0x08]; 
+        break;      
+      case '-' : 
+        c = '-'; 
+        break;
+      case '4' : 
+        c = '4';
+        break;
+      default  : 
+        break;
     }
 
     guid[t] = ( t < nLen ) ? c : 0x00;    
