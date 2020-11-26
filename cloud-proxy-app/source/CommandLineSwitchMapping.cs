@@ -6,13 +6,13 @@ namespace Glasswall.IcapServer.CloudProxyApp
     {
         const string InputConfigurationKey = "InputFilepath";
         const string OutputConfigurationKey = "OutputFilepath";
-        const string ConfigurationConfigurationKey = "Configuration";
+        const string FileIdConfigurationKey = "FileId";
 
         public static IDictionary<string, string> Mapping { get; } = new Dictionary<string, string>
         {
                 { "-i", InputConfigurationKey },
                 { "-o", OutputConfigurationKey },
-                { "-c", ConfigurationConfigurationKey },
+                { "-f", FileIdConfigurationKey }
         };
     }
 }

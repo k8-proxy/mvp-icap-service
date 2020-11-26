@@ -1,5 +1,5 @@
 FROM ubuntu as base
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update --fix-missing && apt-get upgrade -y
 RUN apt-get install libssl-dev libssl1.1
 
 FROM base as source

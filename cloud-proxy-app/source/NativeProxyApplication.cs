@@ -39,7 +39,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
         {
             string originalStoreFilePath = string.Empty;
             string rebuiltStoreFilePath = string.Empty;
-            var fileId = Guid.NewGuid();
+            var fileId = GetFileId(_appConfiguration.FileId);
             try
             {
                 var processingCancellationToken = _processingCancellationTokenSource.Token;
@@ -78,6 +78,16 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 ClearStores(originalStoreFilePath, rebuiltStoreFilePath);
                 return Task.FromResult((int)ReturnOutcome.GW_ERROR);
             }
+        }
+
+        private Guid GetFileId(string fileId)
+        {
+            if (!Guid.TryParse(fileId, out Guid guidFileId))
+            {
+                guidFileId = Guid.NewGuid();
+                _logger.LogInformation($"No valid FileId provided, substituting '{guidFileId}'");                
+            }
+            return guidFileId;
         }
 
         private void ClearStores(string originalStoreFilePath, string rebuiltStoreFilePath)
