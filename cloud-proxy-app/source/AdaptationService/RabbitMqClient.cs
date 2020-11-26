@@ -28,15 +28,30 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
             _responseProcessor = responseProcessor ?? throw new ArgumentNullException(nameof(responseProcessor));
             _queueConfiguration = queueConfiguration ?? throw new ArgumentNullException(nameof(queueConfiguration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            CheckCredentials(queueConfiguration);
 
             _logger.LogInformation($"Setting up queue connection '{queueConfiguration.MBHostName}:{queueConfiguration.MBPort}'");
             connectionFactory = new ConnectionFactory()
             {
                 HostName = queueConfiguration.MBHostName,
                 Port = queueConfiguration.MBPort,
-                UserName = ConnectionFactory.DefaultUser,
-                Password = ConnectionFactory.DefaultPass
+                UserName = queueConfiguration.MBUsername,
+                Password = queueConfiguration.MBPassword
             };
+        }
+
+        private void CheckCredentials(IQueueConfiguration queueConfiguration)
+        {
+            if (string.IsNullOrEmpty(queueConfiguration.MBUsername))
+            {
+                queueConfiguration.MBUsername = ConnectionFactory.DefaultUser;
+                _logger.LogInformation("No RabbitMQ Username provided, using default");
+            }
+            if (string.IsNullOrEmpty(queueConfiguration.MBPassword))
+            {
+                queueConfiguration.MBPassword = ConnectionFactory.DefaultPass;
+                _logger.LogInformation("No RabbitMQ Password provided, using default");
+            }
         }
 
         public void Connect()
