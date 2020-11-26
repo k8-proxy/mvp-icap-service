@@ -12,13 +12,13 @@ int set_from_environment_variable_bool(const char *variable_name, int *target, c
     
   if (NULL == variable_name)
   {
-    goto default_action;
+    goto DEFAULT_ACTION;
   }
   
-  char *environment_value = getenv(variable_name);
+  const char *environment_value = getenv(variable_name);
   if (NULL == environment_value)
   {
-    goto default_action;
+    goto DEFAULT_ACTION;
   }
   
   if (strcmp(environment_value, "true") == 0)
@@ -32,7 +32,7 @@ int set_from_environment_variable_bool(const char *variable_name, int *target, c
     return 1;
   }
   
-default_action:
+DEFAULT_ACTION:
   *target = default_value;
   return 0;
 }
