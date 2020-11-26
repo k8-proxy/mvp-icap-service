@@ -157,10 +157,15 @@ static int gw_rebuild_init_service(ci_service_xdata_t *srv_xdata,
 
     int set_result;
     set_result = set_from_environment_variable_bool(ENABLE_FILE_ID_REPORTING_VARIABLE, &REPORT_FILE_ID, GW_DISABLE_FILE_ID_REPORTING);
+    if (set_result == -1){
+        ci_debug_printf(1, "gw_rebuild_init_service: File Id Reporting configuration error, default to 'false'\n");  
+        REPORT_FILE_ID = GW_DISABLE_FILE_ID_REPORTING;
+    }
+     
     if (set_result == 0)
         ci_debug_printf(5, "gw_rebuild_init_service: File Id Reporting set to default value\n");    
 
-    ci_debug_printf(5, "gw_rebuild_init_service: File Id Reporting = %s\n", REPORT_FILE_ID == 1 ? "true" : "false");    
+    ci_debug_printf(5, "gw_rebuild_init_service: File Id Reporting = %s\n", REPORT_FILE_ID == GW_ENABLE_FILE_ID_REPORTING? "true" : "false");    
     return CI_OK;
 }
 
