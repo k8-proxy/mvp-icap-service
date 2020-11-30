@@ -71,10 +71,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
                     var headers = ea.BasicProperties.Headers;
                     var body = ea.Body.ToArray();
 
-                    var response = _responseProcessor.Process(headers, body);
-                    _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
-
-                    _respQueue.Add(response);
+                    _respQueue.Add(_responseProcessor.Process(headers, body));
                 }
                 catch (Exception ex)
                 {
