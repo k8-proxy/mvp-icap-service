@@ -55,7 +55,7 @@ namespace Glasswall.IcapServer.CloudProxyApp
                 _adaptationServiceClient.Connect();
                 var outcome = _adaptationServiceClient.AdaptationRequest(fileId, originalStoreFilePath, rebuiltStoreFilePath, processingCancellationToken);
 
-                if (outcome == ReturnOutcome.GW_REBUILT)
+                if (outcome == ReturnOutcome.GW_REBUILT || outcome == ReturnOutcome.GW_FAILED)
                 {
                     _logger.LogInformation($"Copy from '{rebuiltStoreFilePath}' to {_appConfiguration.OutputFilepath}");
                     File.Copy(rebuiltStoreFilePath, _appConfiguration.OutputFilepath, overwrite: true);

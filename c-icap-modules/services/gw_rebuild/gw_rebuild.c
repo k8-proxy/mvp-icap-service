@@ -445,11 +445,6 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     int ci_status;
     switch (gw_proxy_api_return)
     {
-        case GW_FAILED:
-            ci_debug_printf(3, "rebuild_request_body GW_FAILED:FileId:%s\n", data->file_id);
-            ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
-            ci_status = CI_ERROR;
-            break;
         case GW_ERROR:
             ci_debug_printf(3, "rebuild_request_body GW_ERROR:FileId:%s\n", data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
@@ -460,33 +455,34 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
             ci_stat_uint64_inc(GW_NOT_PROCESSED, 1); 
             ci_status = CI_MOD_ALLOW204;
             break;
+        case GW_FAILED:
         case GW_REBUILT:
-            {
-                ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
+        {
+            ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
                 
-                if (refresh_externally_updated_file(output) == CI_ERROR){
-                    ci_debug_printf(3, "Problem sizing Rebuild:FileId:%s\n", data->file_id);
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                    ci_status = CI_ERROR;
-                    break;
-                } 
-                if (ci_simple_file_size(output) == 0){
-                    ci_debug_printf(3, "No Rebuilt document available:FileId:%s\n", data->file_id);
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                    ci_status =  CI_ERROR;
-                    break;
-                }
-                if (!replace_request_body(data, output)){
-                    ci_debug_printf(3, "Error replacing request body:FileId:%s\n", data->file_id);
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                    ci_status =  CI_ERROR;
-                    break;
-                }      
-                rebuild_content_length(req, &data->body);  
-                ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1);           
-                ci_status =  CI_OK;
+            if (refresh_externally_updated_file(output) == CI_ERROR){
+                ci_debug_printf(3, "Problem sizing Rebuild:FileId:%s\n", data->file_id);
+                ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+                ci_status = CI_ERROR;
+                break;
+            } 
+            if (ci_simple_file_size(output) == 0){
+                ci_debug_printf(3, "No Rebuilt document available:FileId:%s\n", data->file_id);
+                ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+                ci_status =  CI_ERROR;
                 break;
             }
+            if (!replace_request_body(data, output)){
+                ci_debug_printf(3, "Error replacing request body:FileId:%s\n", data->file_id);
+                ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+                ci_status =  CI_ERROR;
+                break;
+            }      
+            rebuild_content_length(req, &data->body);  
+            ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1);           
+            ci_status =  CI_OK;
+            break;
+        }
         
         default:
             ci_debug_printf(3, "Unrecognised Proxy API return value (%d):FileId:%s\n", gw_proxy_api_return, data->file_id);

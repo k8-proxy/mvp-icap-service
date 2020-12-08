@@ -98,7 +98,8 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
                         { "file-id", fileId.ToString() },
                         { "request-mode", "respmod" },
                         { "source-file-location", originalStoreFilePath},
-                        { "rebuilt-file-location", rebuiltStoreFilePath}
+                        { "rebuilt-file-location", rebuiltStoreFilePath},
+                        { "generate-report", "true"}
                     };
 
             string messageBody = JsonConvert.SerializeObject(headerMap, Formatting.None);
