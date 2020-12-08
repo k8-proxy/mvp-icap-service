@@ -102,9 +102,6 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
                         { "generate-report", "true"}
                     };
 
-            string messageBody = JsonConvert.SerializeObject(headerMap, Formatting.None);
-            var body = Encoding.UTF8.GetBytes(messageBody);
-
             var messageProperties = _channel.CreateBasicProperties();
             messageProperties.Headers = headerMap;
             messageProperties.ReplyTo = _queueConfiguration.OutcomeQueueName;
@@ -115,8 +112,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
             _channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
                                  routingKey: _queueConfiguration.RequestMessageName,
-                                 basicProperties: messageProperties,
-                                 body: body);
+                                 basicProperties: messageProperties);
 
             return _respQueue.Take(processingCancellationToken);
         }
