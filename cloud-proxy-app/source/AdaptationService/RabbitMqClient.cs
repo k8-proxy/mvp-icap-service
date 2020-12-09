@@ -1,12 +1,10 @@
 ﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 
 namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
@@ -98,11 +96,9 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
                         { "file-id", fileId.ToString() },
                         { "request-mode", "respmod" },
                         { "source-file-location", originalStoreFilePath},
-                        { "rebuilt-file-location", rebuiltStoreFilePath}
+                        { "rebuilt-file-location", rebuiltStoreFilePath},
+                        { "generate-report", "true"}
                     };
-
-            string messageBody = JsonConvert.SerializeObject(headerMap, Formatting.None);
-            var body = Encoding.UTF8.GetBytes(messageBody);
 
             var messageProperties = _channel.CreateBasicProperties();
             messageProperties.Headers = headerMap;
@@ -114,8 +110,7 @@ namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
 
             _channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
                                  routingKey: _queueConfiguration.RequestMessageName,
-                                 basicProperties: messageProperties,
-                                 body: body);
+                                 basicProperties: messageProperties);
 
             return _respQueue.Take(processingCancellationToken);
         }
