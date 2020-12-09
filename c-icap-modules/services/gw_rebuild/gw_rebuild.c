@@ -427,6 +427,7 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
 }
 
 static int call_proxy_application(const unsigned char* file_id, const ci_simple_file_t* input, const ci_simple_file_t* output);
+static int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output);
 static int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild);
 static int refresh_externally_updated_file(ci_simple_file_t* updated_file);
 /* Return value:  */
@@ -447,8 +448,11 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     {
         case GW_FAILED:
             ci_debug_printf(3, "rebuild_request_body GW_FAILED:FileId:%s\n", data->file_id);
-            ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
-            ci_status = CI_ERROR;
+            ci_status = process_output_file(req, data, output);
+
+            if (ci_status == CI_OK){
+                ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
+            }
             break;
         case GW_ERROR:
             ci_debug_printf(3, "rebuild_request_body GW_ERROR:FileId:%s\n", data->file_id);
@@ -461,32 +465,13 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
             ci_status = CI_MOD_ALLOW204;
             break;
         case GW_REBUILT:
-            {
-                ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
-                
-                if (refresh_externally_updated_file(output) == CI_ERROR){
-                    ci_debug_printf(3, "Problem sizing Rebuild:FileId:%s\n", data->file_id);
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                    ci_status = CI_ERROR;
-                    break;
-                } 
-                if (ci_simple_file_size(output) == 0){
-                    ci_debug_printf(3, "No Rebuilt document available:FileId:%s\n", data->file_id);
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                    ci_status =  CI_ERROR;
-                    break;
-                }
-                if (!replace_request_body(data, output)){
-                    ci_debug_printf(3, "Error replacing request body:FileId:%s\n", data->file_id);
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                    ci_status =  CI_ERROR;
-                    break;
-                }      
-                rebuild_content_length(req, &data->body);  
-                ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1);           
-                ci_status =  CI_OK;
-                break;
+            ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
+            ci_status = process_output_file(req, data, output);
+
+            if (ci_status == CI_OK){
+                ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1);     
             }
+            break;
         
         default:
             ci_debug_printf(3, "Unrecognised Proxy API return value (%d):FileId:%s\n", gw_proxy_api_return, data->file_id);
@@ -495,6 +480,27 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     }
     return ci_status;    
 }
+
+static int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output)
+{
+    if (refresh_externally_updated_file(output) == CI_ERROR){
+        ci_debug_printf(3, "Problem sizing replacement content:FileId:%s\n", data->file_id);
+        ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+        return CI_ERROR;
+    } 
+    if (ci_simple_file_size(output) == 0){
+        ci_debug_printf(3, "No replacement content available:FileId:%s\n", data->file_id);
+        ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+        return CI_ERROR;
+    }
+    if (!replace_request_body(data, output)){
+        ci_debug_printf(3, "Error replacing request body:FileId:%s\n", data->file_id);
+        ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+        return CI_ERROR;
+    }      
+    rebuild_content_length(req, &data->body);  
+    return CI_OK;
+ }
 
 int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild)
 {
