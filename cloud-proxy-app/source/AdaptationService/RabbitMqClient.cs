@@ -1,12 +1,10 @@
 ﻿using Glasswall.IcapServer.CloudProxyApp.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 
 namespace Glasswall.IcapServer.CloudProxyApp.AdaptationService
