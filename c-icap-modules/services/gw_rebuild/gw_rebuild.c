@@ -384,7 +384,6 @@ static int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof
 }
 
 static int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* input, ci_simple_file_t* output);
-static int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output);
 static void add_file_id_header(ci_request_t *req, const char* header_key, unsigned char* file_id);
 static int gw_rebuild_end_of_data_handler(ci_request_t *req)
 {
@@ -428,6 +427,7 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
 }
 
 static int call_proxy_application(const unsigned char* file_id, const ci_simple_file_t* input, const ci_simple_file_t* output);
+static int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output);
 static int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild);
 static int refresh_externally_updated_file(ci_simple_file_t* updated_file);
 /* Return value:  */
@@ -481,14 +481,15 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     return ci_status;    
 }
 
-int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output){
+int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output)
+{
     if (refresh_externally_updated_file(output) == CI_ERROR){
-        ci_debug_printf(3, "Problem sizing Rebuild:FileId:%s\n", data->file_id);
+        ci_debug_printf(3, "Problem sizing replacement content:FileId:%s\n", data->file_id);
         ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
         return CI_ERROR;
     } 
     if (ci_simple_file_size(output) == 0){
-        ci_debug_printf(3, "No Rebuilt document available:FileId:%s\n", data->file_id);
+        ci_debug_printf(3, "No replacement content available:FileId:%s\n", data->file_id);
         ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
         return CI_ERROR;
     }
