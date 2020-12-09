@@ -481,7 +481,7 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     return ci_status;    
 }
 
-int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output)
+static int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output)
 {
     if (refresh_externally_updated_file(output) == CI_ERROR){
         ci_debug_printf(3, "Problem sizing replacement content:FileId:%s\n", data->file_id);
