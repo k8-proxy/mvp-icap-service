@@ -443,21 +443,25 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     /* Store the return status for inclusion in any error report */
     data->gw_status = gw_proxy_api_return;
     
-    int ci_status;
+    int ci_status =  CI_ERROR;
     switch (gw_proxy_api_return)
     {
         case GW_FAILED:
-            ci_debug_printf(3, "rebuild_request_body GW_FAILED:FileId:%s\n", data->file_id);
-            ci_status = process_output_file(req, data, output);
+            {
+                int outfile_status;
+                ci_debug_printf(3, "rebuild_request_body GW_FAILED:FileId:%s\n", data->file_id);
+                outfile_status = process_output_file(req, data, output);
 
-            if (ci_status == CI_OK){
-                ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
-            }
-            break;
+                if (outfile_status == CI_OK){
+                    ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
+                } else {
+                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+                }
+                break;
+            }            
         case GW_ERROR:
             ci_debug_printf(3, "rebuild_request_body GW_ERROR:FileId:%s\n", data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-            ci_status = CI_ERROR;
             break;
         case GW_UNPROCESSED:
             ci_debug_printf(3, "rebuild_request_body GW_UNPROCESSED:FileId:%s\n", data->file_id);
@@ -470,13 +474,13 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
 
             if (ci_status == CI_OK){
                 ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1);     
+            } else {
+                ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
             }
-            break;
-        
+            break;        
         default:
             ci_debug_printf(3, "Unrecognised Proxy API return value (%d):FileId:%s\n", gw_proxy_api_return, data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-            ci_status =  CI_ERROR;        
     }
     return ci_status;    
 }
