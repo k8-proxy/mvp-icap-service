@@ -449,23 +449,21 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     /* Store the return status for inclusion in any error report */
     data->gw_status = gw_proxy_api_return;
     
-    int rebuild_status =  REBUILD_ERROR;
+    int rebuild_status = REBUILD_ERROR;
+    int outfile_status = CI_ERROR;
     switch (gw_proxy_api_return)
     {
         case GW_FAILED:
-            {
-                int outfile_status;
-                ci_debug_printf(3, "rebuild_request_body GW_FAILED:FileId:%s\n", data->file_id);
-                outfile_status = process_output_file(req, data, output);
+            ci_debug_printf(3, "rebuild_request_body GW_FAILED:FileId:%s\n", data->file_id);
+            outfile_status = process_output_file(req, data, output);
 
-                if (outfile_status == CI_OK){
-                    ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
-                    rebuild_status =  REBUILD_FAILED;
-                } else {
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                }
-                break;
-            }            
+            if (outfile_status == CI_OK){
+                ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
+                rebuild_status =  REBUILD_FAILED;
+            } else {
+                ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+            }
+            break;
         case GW_ERROR:
             ci_debug_printf(3, "rebuild_request_body GW_ERROR:FileId:%s\n", data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
@@ -476,19 +474,16 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
             rebuild_status = REBUILD_UNPROCESSED;
             break;
         case GW_REBUILT:
-            {
-                int outfile_status;
-                ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
-                outfile_status = process_output_file(req, data, output);
+            ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
+            outfile_status = process_output_file(req, data, output);
 
-                if (outfile_status == CI_OK){
-                    ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1); 
-                    rebuild_status = REBUILD_REBUILT;    
-                } else {
-                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-                }
-                break;  
-            }      
+            if (outfile_status == CI_OK){
+                ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1); 
+                rebuild_status = REBUILD_REBUILT;    
+            } else {
+                ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+            }
+            break;  
         default:
             ci_debug_printf(3, "Unrecognised Proxy API return value (%d):FileId:%s\n", gw_proxy_api_return, data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
