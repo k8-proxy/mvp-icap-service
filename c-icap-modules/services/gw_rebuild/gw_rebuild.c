@@ -357,14 +357,14 @@ static int gw_rebuild_io(char *wbuf, int *wlen, char *rbuf, int *rlen, int iseof
     strcat(printBuffer, "gw_rebuild_io, ");
 
     if (wlen) {
-        sprintf(tempBuffer, "wlen=%d, ", *wlen);
+        snprintf(tempBuffer, sizeof(tempBuffer), "wlen=%d, ", *wlen);
         strcat(printBuffer, tempBuffer);
     }
     if (rlen) {
-        sprintf(tempBuffer, "rlen=%d, ", *rlen);
+        snprintf(tempBuffer, sizeof(tempBuffer), "rlen=%d, ", *rlen);
         strcat(printBuffer, tempBuffer);
     }
-    sprintf(tempBuffer, "iseof=%d\n", iseof);
+    snprintf(tempBuffer, sizeof(tempBuffer), "iseof=%d\n", iseof);
     strcat(printBuffer, tempBuffer);
     ci_debug_printf(9, "%s", printBuffer);
 
