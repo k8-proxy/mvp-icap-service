@@ -56,7 +56,6 @@ static int GW_UNPROCESSABLE = -1;
 
 /*********************/
 /* Formating table   */
-static int fmt_gw_rebuild_http_url(ci_request_t *req, char *buf, int len, const char *param);
 static int fmt_gw_rebuild_fileid(ci_request_t *req, char *buf, int len, const char *param);
 
 struct ci_fmt_entry gw_rebuild_report_format_table [] = {
