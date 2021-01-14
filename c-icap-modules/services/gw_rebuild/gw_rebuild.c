@@ -23,8 +23,8 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-
-void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req);
+static void generate_403_headers(ci_request_t *req);
+static void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req);
 static void rebuild_content_length(ci_request_t *req, gw_body_data_t *body);
 static int file_exists (char *filename);
 /***********************************************************************************/
@@ -38,6 +38,8 @@ static const int GW_DISABLE_FILE_ID_REPORTING = 0;
 #define GW_VERSION_SIZE 15
 #define GW_BT_FILE_PATH_SIZE 150
 #define STATS_BUFFER 1024
+
+enum rebuild_request_body_return {REBUILD_UNPROCESSED=0, REBUILD_REBUILT=1, REBUILD_FAILED=2, REBUILD_ERROR=9};
 
 char *PROXY_APP_LOCATION = NULL;
 
@@ -396,11 +398,16 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
         return CI_MOD_DONE;
     }
 
-    int rebuild_status = CI_ERROR;
+    int rebuild_status = REBUILD_ERROR;
     rebuild_status = rebuild_request_body(req, data, data->body.store, data->body.rebuild);
-    
-    if (rebuild_status == CI_ERROR){
+
+    if (rebuild_status == REBUILD_FAILED){
+        ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s, REBUILD_FAILED\n", data->file_id);
+        generate_403_headers(req);
+    } else if (rebuild_status == REBUILD_ERROR){
         int error_report_size;
+        ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s, REBUILD_ERROR\n", data->file_id);
+        generate_403_headers(req);
         generate_error_page(data, req);               
         error_report_size = ci_membuf_size(data->error_page);
    
@@ -415,7 +422,7 @@ static int gw_rebuild_end_of_data_handler(ci_request_t *req)
     }
 
     ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s, allow204(%d)\n", data->file_id, data->allow204);
-    if (data->allow204 && rebuild_status == CI_MOD_ALLOW204){
+    if (data->allow204 && rebuild_status == REBUILD_UNPROCESSED){
         ci_debug_printf(3, "gw_rebuild_end_of_data_handler:FileId:%s, returning %d\n",  data->file_id, rebuild_status);
         return CI_MOD_ALLOW204;
     }
@@ -431,9 +438,10 @@ static int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, c
 static int replace_request_body(gw_rebuild_req_data_t* data, ci_simple_file_t* rebuild);
 static int refresh_externally_updated_file(ci_simple_file_t* updated_file);
 /* Return value:  */
-/* CI_OK - to continue to rebuilt content */
-/* CI_MOD_ALLOW204 - to continue to unchanged content */
-/* CI_ERROR - to report error, whether due to policy error or processing error */
+/* REBUILD_UNPROCESSED - to continue to unchanged content */
+/* REBUILD_REBUILT - to continue to rebuilt content */
+/* REBUILD_FAILED - to report error and use supplied error report */
+/* REBUILD_ERROR - to report  processing error */
 int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* input, ci_simple_file_t* output)
 {
     ci_stat_uint64_inc(GW_SCAN_REQS, 1);    
@@ -443,7 +451,7 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
     /* Store the return status for inclusion in any error report */
     data->gw_status = gw_proxy_api_return;
     
-    int ci_status =  CI_ERROR;
+    int rebuild_status =  REBUILD_ERROR;
     switch (gw_proxy_api_return)
     {
         case GW_FAILED:
@@ -454,6 +462,7 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
 
                 if (outfile_status == CI_OK){
                     ci_stat_uint64_inc(GW_REBUILD_FAILURES, 1); 
+                    rebuild_status =  REBUILD_FAILED;
                 } else {
                     ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
                 }
@@ -466,23 +475,27 @@ int rebuild_request_body(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simp
         case GW_UNPROCESSED:
             ci_debug_printf(3, "rebuild_request_body GW_UNPROCESSED:FileId:%s\n", data->file_id);
             ci_stat_uint64_inc(GW_NOT_PROCESSED, 1); 
-            ci_status = CI_MOD_ALLOW204;
+            rebuild_status = REBUILD_UNPROCESSED;
             break;
         case GW_REBUILT:
-            ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
-            ci_status = process_output_file(req, data, output);
+            {
+                int outfile_status;
+                ci_debug_printf(3, "rebuild_request_body GW_REBUILT:FileId:%s\n", data->file_id);
+                outfile_status = process_output_file(req, data, output);
 
-            if (ci_status == CI_OK){
-                ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1);     
-            } else {
-                ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
-            }
-            break;        
+                if (outfile_status == CI_OK){
+                    ci_stat_uint64_inc(GW_REBUILD_SUCCESSES, 1); 
+                    rebuild_status = REBUILD_REBUILT;    
+                } else {
+                    ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
+                }
+                break;  
+            }      
         default:
             ci_debug_printf(3, "Unrecognised Proxy API return value (%d):FileId:%s\n", gw_proxy_api_return, data->file_id);
             ci_stat_uint64_inc(GW_REBUILD_ERRORS, 1); 
     }
-    return ci_status;    
+    return rebuild_status;    
 }
 
 static int process_output_file(ci_request_t *req, gw_rebuild_req_data_t* data, ci_simple_file_t* output)
@@ -550,12 +563,8 @@ static int init_body_data(ci_request_t *req)
     return CI_OK;
 }
 
-void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req)
+static void generate_403_headers(ci_request_t *req)
 {
-    ci_membuf_t *error_page;
-    char buf[1024];
-    const char *lang;
-
     if ( ci_http_response_headers(req))
          ci_http_response_reset_headers(req);
     else
@@ -564,13 +573,20 @@ void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req)
     ci_http_response_add_header(req, "Server: C-ICAP");
     ci_http_response_add_header(req, "Connection: close");
     ci_http_response_add_header(req, "Content-Type: text/html");
+}
+
+static void generate_error_page(gw_rebuild_req_data_t *data, ci_request_t *req)
+{
+    ci_membuf_t *error_page;
+    char buf[1024];
+    const char *lang;
 
     error_page = ci_txt_template_build_content(req, "gw_rebuild", "POLICY_ISSUE",
                            gw_rebuild_report_format_table);
 
     lang = ci_membuf_attr_get(error_page, "lang");
     if (lang) {
-        snprintf(buf, sizeof(buf), "content-language: %s", lang);
+        snprintf(buf, sizeof(buf), "Content-Language: %s", lang);
         buf[sizeof(buf)-1] = '\0';
         ci_http_response_add_header(req, buf);
     }
