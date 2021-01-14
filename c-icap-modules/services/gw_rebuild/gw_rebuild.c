@@ -57,11 +57,10 @@ static int GW_UNPROCESSABLE = -1;
 /*********************/
 /* Formating table   */
 static int fmt_gw_rebuild_http_url(ci_request_t *req, char *buf, int len, const char *param);
-static int fmt_gw_rebuild_error_code(ci_request_t *req, char *buf, int len, const char *param);
+static int fmt_gw_rebuild_fileid(ci_request_t *req, char *buf, int len, const char *param);
 
 struct ci_fmt_entry gw_rebuild_report_format_table [] = {
-    {"%GU", "The HTTP url", fmt_gw_rebuild_http_url},
-    {"%GE", "The Error code", fmt_gw_rebuild_error_code},
+    {"%GI", "The file id blocked is", fmt_gw_rebuild_fileid},
     { NULL, NULL, NULL}
 };
 
@@ -731,16 +730,10 @@ static void add_file_id_header(ci_request_t *req, const char* header_key, unsign
 /**************************************************************/
 /* gw_rebuild templates  formating table                         */
 
-int fmt_gw_rebuild_http_url(ci_request_t *req, char *buf, int len, const char *param)
+static int fmt_gw_rebuild_fileid(ci_request_t *req, char *buf, int len, const char *param)
 {
     gw_rebuild_req_data_t *data = ci_service_data(req);
-    return snprintf(buf, len, "%s", data->url_log);
-}
-
-static int fmt_gw_rebuild_error_code(ci_request_t *req, char *buf, int len, const char *param)
-{
-    gw_rebuild_req_data_t *data = ci_service_data(req);
-    return snprintf(buf, len, "%d", data->gw_status);
+    return snprintf(buf, len, "%s", data->file_id);
 }
 
 char* concat(char* output, const char* s1, const char* s2)
