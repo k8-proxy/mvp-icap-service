@@ -1,19 +1,17 @@
 <html>
  <head>
-   <title>Policy Issue</title>
+   <title>Processing Error</title>
 </head>
 
 <body>
-<h1>Document Access Blocked due to Policy</h1>
+<h1>Document Access Blocked due to Processing Error</h1>
 
 
-You tried to upload/download a file that does not comply with current policy
+A processing error has blocked access to a file you tried to upload/download
 <br>
-The Http location is:
-<b> %GU </b>
 <br>
-The error code is:
-<b> %GE </b>
+The file id blocked is:
+<b> %GI </b>
 <p>
   For more information contact your system administrator
 

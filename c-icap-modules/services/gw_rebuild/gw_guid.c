@@ -9,8 +9,8 @@ void generate_random_guid(unsigned char guid[40])
 {
   srand (clock());
 
-  int nLen = strlen (szTemp);
-  int t;
+  unsigned long nLen = strlen (szTemp);
+  unsigned long t;
   for (t=0; t<nLen+1; t++){
     int r = rand () % 16;
     char c = ' ';   
