@@ -69,7 +69,6 @@ static char *path_dup(const char *path, const char *config_dir)
         return strdup(path);
 
     snprintf(fpath, CI_MAX_PATH, "%s/%s", config_dir, path);
-    fpath[CI_MAX_PATH -1] = '\0';
     return strdup(fpath);
 }
 
@@ -185,7 +184,6 @@ static int openssl_cert_passphrase_cb(char *buf, int size, int rwflag, void *u)
     }
 
     snprintf(script, sizeof(script), "%s %s %d", TLS_PASSPHRASE_SCRIPT, port->address ? port->address : "*", port->port);
-    script[sizeof(script) - 1] = '\0';
 
     FILE *f = popen(script, "r");
     int bytes = fread(buf, 1, size, f);
@@ -203,36 +201,107 @@ static int openssl_cert_passphrase_cb(char *buf, int size, int rwflag, void *u)
 /*
  * Get the right TLS method for the given configuration string
  */
-static const SSL_METHOD* get_tls_method(const char* method_str, int b_for_server)
+static const SSL_METHOD* get_tls_method(int b_for_server)
 {
-    if ( method_str == NULL ) {
-        ci_debug_printf(1, "No TLS/SSL method string given. Using default.\n");
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
-        return (b_for_server) ? TLS_server_method() : TLS_client_method();
+    return (b_for_server) ? TLS_server_method() : TLS_client_method();
 #else
-        return (b_for_server) ? SSLv23_server_method() : SSLv23_client_method();
+    return (b_for_server) ? SSLv23_server_method() : SSLv23_client_method();
 #endif
-    }
+}
+
+static void restrict_tls_method(SSL_CTX *ctx, const char* method_str)
+{
+    long method_options = 0;
+
+    if (!method_str || !method_str[0])
+        return;
+
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
     if ( 0 == strcmp(method_str, "SSLv23")) {
-        return (b_for_server) ? SSLv23_server_method() : SSLv23_client_method();
+        method_options = SSL_OP_NO_TLSv1
+#if defined(SSL_OP_NO_TLSv1_1)
+            | SSL_OP_NO_TLSv1_1
+#endif
+#if defined(SSL_OP_NO_TLSv1_2)
+            | SSL_OP_NO_TLSv1_2
+#endif
+#if defined(SSL_OP_NO_TLSv1_3)
+            | SSL_OP_NO_TLSv1_3
+#endif
+            ;
     }
 #endif
+#if defined(SSL_OP_NO_TLSv1_3) /* TLSv1.3 is supported */
+    else if ( 0 == strcmp(method_str, "TLSv1_3")) {
+        method_options = SSL_OP_NO_TLSv1 | SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2
+#if defined(SSL_OP_NO_TLSv1_1)
+            | SSL_OP_NO_TLSv1_1
+#endif
+#if defined(SSL_OP_NO_TLSv1_2)
+            | SSL_OP_NO_TLSv1_2
+#endif
+            ;
+    }
+#endif
+#if defined(SSL_OP_NO_TLSv1_2) /* TLSv1.2 is supported */
     else if ( 0 == strcmp(method_str, "TLSv1_2")) {
-        return (b_for_server) ? TLSv1_2_server_method() : TLSv1_2_client_method();
-    } else if ( 0 == strcmp(method_str, "TLSv1_1")) {
-        return (b_for_server) ? TLSv1_1_server_method() : TLSv1_1_client_method();
-    } else if ( 0 == strcmp(method_str, "TLSv1")) {
-        return (b_for_server) ? TLSv1_server_method() : TLSv1_client_method();
+        method_options = SSL_OP_NO_TLSv1 | SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2
+#if defined(SSL_OP_NO_TLSv1_1)
+            | SSL_OP_NO_TLSv1_1
+#endif
+#if defined(SSL_OP_NO_TLSv1_3)
+            | SSL_OP_NO_TLSv1_3
+#endif
+            ;
+    }
+#endif
+#if defined(SSL_OP_NO_TLSv1_1) /* TLSv1.1 is supported */
+    else if ( 0 == strcmp(method_str, "TLSv1_1")) {
+        method_options = SSL_OP_NO_TLSv1 | SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2
+#if defined(SSL_OP_NO_TLSv1_2)
+            | SSL_OP_NO_TLSv1_2
+#endif
+#if defined(SSL_OP_NO_TLSv1_3)
+            | SSL_OP_NO_TLSv1_3
+#endif
+            ;
+    }
+#endif
+    else if ( 0 == strcmp(method_str, "TLSv1")) {
+        method_options = SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2
+#if defined(SSL_OP_NO_TLSv1_1)
+            | SSL_OP_NO_TLSv1_1
+#endif
+#if defined(SSL_OP_NO_TLSv1_2)
+            | SSL_OP_NO_TLSv1_2
+#endif
+#if defined(SSL_OP_NO_TLSv1_3)
+            | SSL_OP_NO_TLSv1_3
+#endif
+            ;
     }
 #ifndef OPENSSL_NO_SSL3_METHOD
     else if ( 0 == strcmp(method_str, "SSLv3")) {
-        return (b_for_server) ? SSLv3_server_method() : SSLv3_client_method();
+        method_options = SSL_OP_NO_TLSv1 | SSL_OP_NO_SSLv2
+#if defined(SSL_OP_NO_TLSv1_1)
+            | SSL_OP_NO_TLSv1_1
+#endif
+#if defined(SSL_OP_NO_TLSv1_2)
+            | SSL_OP_NO_TLSv1_2
+#endif
+#if defined(SSL_OP_NO_TLSv1_3)
+            | SSL_OP_NO_TLSv1_3
+#endif
+            ;
     }
 #endif
+    else {
+        ci_debug_printf(1, "TLS/SSL method string \"%s\" not available.\n", method_str);
+        return;
+    }
 
-    ci_debug_printf(1, "TLS/SSL method string \"%s\" not available.\n", method_str);
-    return NULL;
+    SSL_CTX_set_options(ctx, method_options);
 }
 
 
@@ -338,7 +407,7 @@ void ci_tls_cleanup()
 static SSL_CTX *create_server_context(ci_port_t *port)
 {
     SSL_CTX *ctx;
-    const SSL_METHOD* method = get_tls_method(port->tls_method, 1);
+    const SSL_METHOD* method = get_tls_method(1);
     if (method == NULL) {
         return 0;
     }
@@ -347,6 +416,8 @@ static SSL_CTX *create_server_context(ci_port_t *port)
         ci_debug_printf(1, "Unable to create SSL_CTX object for SSL/TLS listening to: %s:%d\n", port->address, port->port);
         return NULL;
     }
+
+    restrict_tls_method(ctx, port->tls_method);
 
     SSL_CTX_set_default_passwd_cb(ctx, openssl_cert_passphrase_cb);
     SSL_CTX_set_default_passwd_cb_userdata(ctx, port);
@@ -676,7 +747,7 @@ static int match_X509_names(X509 *cert, const char *servername)
 SSL_CTX *ci_tls_create_context(ci_tls_client_options_t *opts)
 {
     SSL_CTX *ctx;
-    const SSL_METHOD *method = get_tls_method(opts ? opts->method : NULL, 0);
+    const SSL_METHOD *method = get_tls_method(0);
 
     if (!method) {
         ci_debug_printf(1, "Enable to get a valid supported SSL method (%s does not exist?)\n", opts ? opts->method : "-");
@@ -684,6 +755,9 @@ SSL_CTX *ci_tls_create_context(ci_tls_client_options_t *opts)
     }
 
     ctx = SSL_CTX_new(method);
+
+    restrict_tls_method(ctx, opts ? opts->method : NULL);
+
     if (!opts || opts->verify) {
         SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, openssl_verify_cert_cb);
         SSL_CTX_set_default_verify_paths(ctx);
@@ -714,6 +788,16 @@ int ci_tls_connect_nonblock(ci_connection_t *connection, const char *servername,
     char buf[512];
     char hostname[CI_MAXHOSTNAMELEN + 1];
     SSL *ssl = NULL;
+
+    struct in_addr ipv4_addr;
+    int servername_is_ip_v4 = (ci_inet_aton(AF_INET, servername, &ipv4_addr) !=0);
+#ifdef USE_IPV6
+    struct in6_addr ipv6_addr;
+    int servername_is_ip_v6 = (ci_inet_aton(AF_INET6, servername, &ipv6_addr) != 0);
+#else
+    int servername_is_ip_v6 = 0;
+#endif
+    int servername_is_ip = servername_is_ip_v4 || servername_is_ip_v6;
 
     assert(connection);
     if (!connection->bio) {
@@ -753,6 +837,12 @@ int ci_tls_connect_nonblock(ci_connection_t *connection, const char *servername,
             /* Enable automatic hostname checks */
             X509_VERIFY_PARAM_set_hostflags(param, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
             X509_VERIFY_PARAM_set1_host(param, servername, 0);
+            if (servername_is_ip) {
+                X509_VERIFY_PARAM_set1_ip_asc(param, servername);
+            }
+            else {
+                X509_VERIFY_PARAM_set1_host(param, servername, 0);
+            }
         }
 #else
         // Implement
@@ -764,14 +854,24 @@ int ci_tls_connect_nonblock(ci_connection_t *connection, const char *servername,
         BIO_set_ssl(ssl_bio, ssl, BIO_CLOSE);
 
 #if defined(SSL_CTRL_SET_TLSEXT_HOSTNAME)
-        SSL_set_tlsext_host_name(ssl, servername);
+        if (!servername_is_ip) {
+            SSL_set_tlsext_host_name(ssl, servername);
+        }
 #endif
 
         snprintf(buf, sizeof(buf), "%d", port);
 
         connection->bio = BIO_new(BIO_s_connect());
         BIO_set_conn_port(connection->bio, buf);
-        BIO_set_conn_hostname(connection->bio, servername);
+        if (servername_is_ip_v6) {
+            // IPv6 addresses must be written in square brackets
+            char ipv6_servername[64];
+            snprintf(ipv6_servername, sizeof(ipv6_servername), "[%s]", servername);
+            BIO_set_conn_hostname(connection->bio, ipv6_servername);
+        }
+        else {
+            BIO_set_conn_hostname(connection->bio, servername);
+        }
         BIO_set_nbio(connection->bio, 1);
 
         connection->bio = BIO_push(ssl_bio, connection->bio);
