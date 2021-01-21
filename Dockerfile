@@ -52,6 +52,8 @@ COPY --from=build /usr/local/c-icap /usr/local/c-icap
 COPY --from=build /run/c-icap /run/c-icap
 COPY --from=dotnet-builder /src/cloud-proxy-app/source/bin/Release/netcoreapp3.1/publish /usr/local/bin
 
+ADD ./opt /opt
+RUN chmod +x /opt/start.sh; sync
 EXPOSE 1344
 EXPOSE 1345
-CMD ["/usr/local/c-icap/bin/c-icap","-N","-D"]
+CMD /opt/start.sh
